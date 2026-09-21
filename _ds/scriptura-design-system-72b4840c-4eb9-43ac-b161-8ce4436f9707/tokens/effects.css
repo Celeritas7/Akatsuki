@@ -1,0 +1,50 @@
+/* ============================================================
+   Scriptura — Effects: shadows, glows, motion, backgrounds
+   The system's signature is the colored glow: every accent
+   surface casts a soft shadow tinted with its own hue. Motion
+   is quick and gentle — fades and small lifts, never bounce.
+   ============================================================ */
+
+:root {
+  /* --- Elevation (neutral) --- */
+  --shadow-card:   0 4px 15px rgba(0, 0, 0, 0.2);
+  --shadow-inset:  inset 0 2px 10px rgba(0, 0, 0, 0.1); /* canvas wells */
+
+  /* --- Colored glows (tinted to the accent) --- */
+  --glow-indic:    0 12px 40px rgba(245, 158, 11, 0.40);
+  --glow-cjk:      0 12px 40px rgba(236, 72, 153, 0.40);
+  --glow-practice: 0 8px 30px rgba(34, 197, 94, 0.30);
+  --glow-quiz:     0 4px 15px rgba(59, 130, 246, 0.30);
+  --glow-sheet:    0 4px 15px rgba(139, 92, 246, 0.30);
+  --glow-review:   0 4px 15px rgba(249, 115, 22, 0.30);
+  --glow-chip:     0 4px 15px rgba(245, 158, 11, 0.30);
+
+  /* --- Hover-intensified glow (buttons lift + glow) --- */
+  --glow-practice-hover: 0 12px 40px rgba(34, 197, 94, 0.40);
+
+  /* --- Motion --- */
+  --ease: cubic-bezier(0.4, 0, 0.2, 1); /* @kind other */
+  --dur-fast:  0.2s; /* @kind other */
+  --dur-base:  0.3s; /* @kind other */
+
+  /* --- Interaction transforms --- */
+  --lift-card:   translateY(-6px); /* @kind other */
+  --lift-button: translateY(-3px); /* @kind other */
+  --lift-nudge:  translateY(-2px); /* @kind other */
+
+  /* --- Ambient homepage background (radial aurora) --- */
+  --aurora:
+    radial-gradient(ellipse at 20% 20%, rgba(245, 158, 11, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(139, 92, 246, 0.06) 0%, transparent 60%); /* @kind other */
+}
+
+/* Shared keyframes used across the product */
+@keyframes scriptura-fade-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes scriptura-slide-up {
+  from { opacity: 0; transform: translateY(15px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

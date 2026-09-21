@@ -1,0 +1,34 @@
+/* ============================================================
+   Scriptura — Spacing & radius tokens
+   Spacing is rem-based on a loose 4px grid. Radii run large and
+   friendly — pills for chips, 12–20px for cards and buttons.
+   ============================================================ */
+
+:root {
+  /* --- Spacing scale (rem) --- */
+  --space-1: 0.25rem;  /*  4px */
+  --space-2: 0.4rem;   /*  ~6px — tight chip gaps */
+  --space-3: 0.5rem;   /*  8px */
+  --space-4: 0.75rem;  /* 12px */
+  --space-5: 1rem;     /* 16px */
+  --space-6: 1.25rem;  /* 20px — default card padding step */
+  --space-7: 1.5rem;   /* 24px — card padding, grid gaps */
+  --space-8: 2rem;     /* 32px */
+  --space-9: 2.5rem;   /* 40px */
+
+  /* --- Radius scale --- */
+  --radius-sm:   5px;   /* worksheet checkboxes, legend chips */
+  --radius-md:   10px;  /* tool buttons, stat pills */
+  --radius-lg:   12px;  /* action buttons, tab items */
+  --radius-xl:   16px;  /* mode rail, canvas surface */
+  --radius-2xl:  20px;  /* cards, panels */
+  --radius-pill: 35px;  /* language chips, segmented buttons */
+  --radius-full: 9999px;/* circular nav buttons */
+
+  /* --- Layout --- */
+  --container-max:  1400px; /* practice page max width */
+  --content-max:    700px;  /* homepage selection column */
+  --canvas-max:     400px;  /* drawing surface cap */
+  --sidebar-w:      320px;  /* practice character panel */
+  --hit-target:     44px;   /* min interactive size */
+}

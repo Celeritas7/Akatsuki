@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="_ds/scriptura-design-system-72b4840c-4eb9-43ac-b161-8ce4436f9707/tokens/fonts.css">
+  <link rel="stylesheet" href="_ds/scriptura-design-system-72b4840c-4eb9-43ac-b161-8ce4436f9707/tokens/colors.css">
+  <link rel="stylesheet" href="_ds/scriptura-design-system-72b4840c-4eb9-43ac-b161-8ce4436f9707/tokens/typography.css">
+  <link rel="stylesheet" href="_ds/scriptura-design-system-72b4840c-4eb9-43ac-b161-8ce4436f9707/tokens/spacing.css">
+  <link rel="stylesheet" href="_ds/scriptura-design-system-72b4840c-4eb9-43ac-b161-8ce4436f9707/tokens/effects.css">
+  <link rel="stylesheet" href="_ds/scriptura-design-system-72b4840c-4eb9-43ac-b161-8ce4436f9707/styles.css">
+  <script src="_ds/scriptura-design-system-72b4840c-4eb9-43ac-b161-8ce4436f9707/_ds_bundle.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/config.js"></script>
+  <style>
+    html, body { margin: 0; background: #0a0a0f; color: #f0f0f5; font-family: 'Outfit', system-ui, sans-serif; }
+    a { color: #f97316; text-decoration: none; } a:hover { color: #fb923c; }
+    input, select, textarea { font-family: 'Outfit', system-ui, sans-serif; }
+    input:focus, select:focus, textarea:focus { outline: 2px solid #f97316; outline-offset: 0; }
+    @keyframes aka-breathe { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
+    @keyframes aka-flare { 0%, 100% { opacity: .7; } 50% { opacity: 1.6; } }
+    @keyframes aka-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+    @keyframes aka-rise { from { transform: translateY(40px) scale(.96); } to { transform: translateY(0) scale(1); } }
+    @keyframes aka-halo { 0%, 100% { opacity: .75; } 50% { opacity: 1; } }
+    @keyframes aka-rage { 0%, 100% { opacity: .85; filter: saturate(1); } 50% { opacity: 1; filter: saturate(1.4); } }
+    @keyframes aka-ember { 0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,.55), 0 8px 30px rgba(239,68,68,.18); } 50% { box-shadow: 0 0 0 6px rgba(239,68,68,0), 0 8px 40px rgba(239,68,68,.32); } }
+    @keyframes aka-dot { 0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,.6); } 60% { box-shadow: 0 0 0 8px rgba(239,68,68,0); } }
+    @keyframes aka-drift { 0% { transform: translate3d(0,0,0); } 50% { transform: translate3d(-14px,10px,0); } 100% { transform: translate3d(0,0,0); } }
+  </style>
+</helmet>
+{{ atmosphere }}
+<div data-screen-label="Akatsuki" style="position:relative; z-index:1; display:flex; min-height:100vh; align-items:stretch">
+  <sc-if value="{{ navRail }}" hint-placeholder-val="{{ true }}">
+    <nav style="width:212px; flex:none; padding:28px 16px; display:flex; flex-direction:column; gap:28px; border-right:1px solid rgba(239,68,68,.25); background:linear-gradient(180deg, rgba(239,68,68,.06), rgba(18,18,26,0) 40%), var(--bg-secondary)">
+      <div style="display:flex; align-items:center; gap:10px; padding:0 8px">
+        <span style="font-family:var(--font-japanese); font-size:2.1rem; line-height:1; font-weight:700; background:linear-gradient(135deg, #ef4444, #f97316); -webkit-background-clip:text; background-clip:text; color:transparent; filter:drop-shadow(0 0 14px rgba(239,68,68,.55))">暁</span>
+        <div style="display:flex; flex-direction:column">
+          <span style="font-weight:700; font-size:1.2rem; letter-spacing:2px; text-transform:uppercase">akatsuki</span>
+          <span style="font-size:.75rem; color:var(--text-secondary)">the attackers' channel</span>
+        </div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:6px; padding:6px; background:var(--bg-primary); border:1px solid var(--border-color); border-radius:var(--radius-xl)">
+        <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Tab" layout="inline" icon="💬" accent="review" active="{{ isChannel }}" on-click="{{ goChannel }}" hint-size="100%,44px" style="width:100%; justify-content:flex-start">Channel</x-import>
+        <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Tab" layout="inline" icon="📅" accent="review" active="{{ isBoard }}" on-click="{{ goBoard }}" hint-size="100%,44px" style="width:100%; justify-content:flex-start">Board</x-import>
+        <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Tab" layout="inline" icon="🏷️" accent="review" active="{{ isStanding }}" on-click="{{ goStanding }}" hint-size="100%,44px" style="width:100%; justify-content:flex-start">Standing</x-import>
+        <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Tab" layout="inline" icon="🔗" accent="review" active="{{ isHub }}" on-click="{{ goHub }}" hint-size="100%,44px" style="width:100%; justify-content:flex-start">Hub</x-import>
+      </div>
+      <div style="margin-top:auto; display:flex; flex-direction:column; gap:10px; padding:14px; border:1px solid var(--border-color); border-radius:var(--radius-2xl); background:var(--bg-card)">
+        <span style="font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-secondary); font-weight:600">Reading as</span>
+        <span style="font-weight:600; color: {{ viewerColor }}">{{ viewerName }}</span>
+        <span style="font-size:.8rem; color:var(--text-secondary)">{{ viewerNote }}</span>
+      </div>
+    </nav>
+  </sc-if>
+  <main style="flex:1; min-width:0; max-width:1120px; padding:28px 32px 48px; display:flex; flex-direction:column; gap:24px">
+    <sc-if value="{{ navBar }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap">
+        <div style="display:flex; align-items:center; gap:10px">
+          <span style="font-family:var(--font-japanese); font-size:2.1rem; line-height:1; font-weight:700; background:linear-gradient(135deg, #ef4444, #f97316); -webkit-background-clip:text; background-clip:text; color:transparent; filter:drop-shadow(0 0 14px rgba(239,68,68,.55))">暁</span>
+          <span style="font-weight:700; font-size:1.2rem; letter-spacing:2px; text-transform:uppercase">akatsuki</span>
+        </div>
+        <div style="display:flex; gap:6px; padding:6px; background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:var(--radius-xl)">
+          <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Tab" layout="inline" icon="💬" accent="review" active="{{ isChannel }}" on-click="{{ goChannel }}" hint-size="auto,44px">Channel</x-import>
+          <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Tab" layout="inline" icon="📅" accent="review" active="{{ isBoard }}" on-click="{{ goBoard }}" hint-size="auto,44px">Board</x-import>
+          <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Tab" layout="inline" icon="🏷️" accent="review" active="{{ isStanding }}" on-click="{{ goStanding }}" hint-size="auto,44px">Standing</x-import>
+          <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Tab" layout="inline" icon="🔗" accent="review" active="{{ isHub }}" on-click="{{ goHub }}" hint-size="auto,44px">Hub</x-import>
+        </div>
+        <span style="font-size:.85rem; color:var(--text-secondary)">Reading as <span style="font-weight:600; color: {{ viewerColor }}">{{ viewerName }}</span></span>
+      </div>
+    </sc-if>
+
+    <header style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap">
+      <div style="display:flex; flex-direction:column; gap:6px; min-width:0">
+        <h1 style="margin:0; font-size:var(--fs-h2); font-weight:700; line-height:1.15; letter-spacing:-.5px; background:linear-gradient(135deg, #f0f0f5 0%, #fdba74 55%, #ef4444 100%); -webkit-background-clip:text; background-clip:text; color:transparent">{{ pageTitle }}</h1>
+        <p style="margin:0; color:var(--text-secondary); font-size:var(--fs-base); text-wrap:pretty">{{ pageSub }}</p>
+        <div style="display:flex; align-items:center; gap:8px; margin-top:4px">
+          <span style="width:9px; height:9px; border-radius:50%; background: {{ dayDotColor }}; box-shadow: 0 0 12px {{ dayDotColor }}; animation: {{ dayDotAnim }}"></span>
+          <span style="font-size:.85rem; color:var(--text-secondary)">{{ dayStatus }}</span>
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap">
+        <x-import component-from-global-scope="ScripturaDesignSystem_72b484.SegmentedControl" options="{{ viewerOptions }}" value="{{ viewAs }}" on-change="{{ setViewAs }}" accent="review" hint-size="auto,44px"></x-import>
+        <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Button" accent="danger" icon="✍️" on-click="{{ toggleCompose }}" hint-size="auto,44px">{{ composeLabel }}</x-import>
+      </div>
+    </header>
+
+    <sc-if value="{{ composeClaim }}" hint-placeholder-val="{{ false }}">
+      <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Card" hint-size="100%,160px" style="animation: aka-in .3s ease">
+        <div style="display:flex; flex-direction:column; gap:16px">
+          <div style="display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap">
+            <span style="font-weight:600; font-size:var(--fs-lg)">Post a claim as <span style="color: {{ viewerColor }}">{{ viewerName }}</span></span>
+            <span style="font-size:.85rem; color:var(--text-secondary)">Clashes are found before you post, not after the day locks.</span>
+          </div>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:12px">
+            <label style="display:flex; flex-direction:column; gap:6px; font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-secondary); font-weight:600">Day
+              <select value="{{ form.day }}" onChange="{{ setDay }}" style="background:var(--bg-secondary); border:1px solid var(--border-color); color:var(--text-primary); border-radius:10px; padding:10px 12px; font-size:.95rem; min-height:44px; letter-spacing:0; text-transform:none">
+                <option value="weekday">Weekday</option>
+                <option value="weekend">Weekend</option>
+              </select>
+            </label>
+            <label style="display:flex; flex-direction:column; gap:6px; font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-secondary); font-weight:600">Start
+              <input type="time" value="{{ form.time }}" onChange="{{ setTime }}" style="background:var(--bg-secondary); border:1px solid var(--border-color); color:var(--text-primary); border-radius:10px; padding:10px 12px; font-size:.95rem; min-height:44px; letter-spacing:0">
+            </label>
+            <label style="display:flex; flex-direction:column; gap:6px; font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-secondary); font-weight:600">Minutes
+              <input type="number" min="5" step="5" value="{{ form.dur }}" onChange="{{ setDur }}" style="background:var(--bg-secondary); border:1px solid var(--border-color); color:var(--text-primary); border-radius:10px; padding:10px 12px; font-size:.95rem; min-height:44px; letter-spacing:0">
+            </label>
+            <label style="display:flex; flex-direction:column; gap:6px; font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-secondary); font-weight:600">Lock
+              <select value="{{ form.lock }}" onChange="{{ setLock }}" style="background:var(--bg-secondary); border:1px solid var(--border-color); color:var(--text-primary); border-radius:10px; padding:10px 12px; font-size:.95rem; min-height:44px; letter-spacing:0; text-transform:none">
+                <option value="none">No lock</option>
+                <option value="soft">Soft lock</option>
+                <option value="hard">Hard lock</option>
+              </select>
+            </label>
+          </div>
+          <input type="text" placeholder="What is this for?" value="{{ form.note }}" onChange="{{ setNote }}" style="background:var(--bg-secondary); border:1px solid var(--border-color); color:var(--text-primary); border-radius:10px; padding:10px 12px; font-size:.95rem; min-height:44px">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap">
+            <span style="font-size:.85rem; color: {{ previewColor }}">{{ previewText }}</span>
+            <div style="display:flex; gap:8px">
+              <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Button" variant="secondary" on-click="{{ toggleCompose }}" hint-size="auto,44px">Cancel</x-import>
+              <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Button" accent="review" on-click="{{ submitClaim }}" hint-size="auto,44px">Post to the channel</x-import>
+            </div>
+          </div>
+        </div>
+      </x-import>
+    </sc-if>
+
+    <sc-if value="{{ composeHub }}" hint-placeholder-val="{{ false }}">
+      <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Card" hint-size="100%,300px" style="animation: aka-in .3s ease">
+        <div style="display:flex; flex-direction:column; gap:16px">
+          <div style="display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap">
+            <span style="font-weight:600; font-size:var(--fs-lg)">File a card</span>
+            <span style="font-size:.85rem; color:var(--text-secondary)">Akatsuki judges before anyone writes an adapter.</span>
+          </div>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px">
+            <label style="display:flex; flex-direction:column; gap:6px; font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-secondary); font-weight:600">Role
+              <select value="{{ reg.role }}" onChange="{{ setReg.role }}" style="background:var(--bg-secondary); border:1px solid var(--border-color); color:var(--text-primary); border-radius:10px; padding:10px 12px; font-size:.95rem; min-height:44px; letter-spacing:0; text-transform:none">
+                <option value="app">App · emits and accepts</option>
+                <option value="api">API source · emits only</option>
+              </select>
+            </label>
+            <label style="display:flex; flex-direction:column; gap:6px; font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-secondary); font-weight:600">App id
+              <input type="text" placeholder="travel" value="{{ reg.id }}" onChange="{{ setReg.id }}" style="background:var(--bg-secondary); border:1px solid var(--border-color); color:var(--text-primary); border-radius:10px; padding:10px 12px; font-size:.95rem; min-height:44px; letter-spacing:0; text-transform:none">
+            </label>
+            <label style="display:flex; flex-direction:column; gap:6px; font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-secondary); font-weight:600">Name
+              <input type="text" placeholder="Travel Plan" value="{{ reg.name }}" onChange="{{ setReg.name }}" style="background:var(--bg-secondary); border:1px solid var(--border-color); color:var(--text-primary); border-radius:10px; padding:10px 12px; font-size:.95rem; min-height:44px; letter-spacing:0; text-transform:none">
+            </label>
+            <label style="display:flex; flex-direction:column; gap:6px; font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-secondary); font-weight:600">Pattern
+              <select value="{{ reg.pattern }}" onChange="{{ setReg.pattern }}" style="background:var(--bg-secondary); border:1px solid var(--border-color); color:var(--text-primary); border-radius:10px; padding:10px 12px; font-size:.95rem; min-height:44px; letter-spacing:0; text-transform:none">
+                <option value="stream">Stream · discrete items</option>
+                <option value="document">Document · shared, owned fields</option>
+                <option value="reply">Request / reply</option>
+              </select>
+            </label>
+            <label style="display:flex; flex-direction:column; gap:6px; font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-secondary); font-weight:600">Session
+              <select value="{{ reg.session }}" onChange="{{ setReg.session }}" style="background:var(--bg-secondary); border:1px solid var(--border-color); color:var(--text-primary); border-radius:10px; padding:10px 12px; font-size:.95rem; min-height:44px; letter-spacing:0; text-transform:none">
+                <option value="jwt">User JWT · RLS applies</option>
+                <option value="guest">Guest · localStorage first</option>
+                <option value="service">Service role · scopes user_id itself</option>
+                <option value="unknown">Not declared</option>
+              </select>
+            </label>
+            <label style="display:flex; flex-direction:column; gap:6px; font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-secondary); font-weight:600">Address shape
+              <input type="text" placeholder="{trip_id, segment_id}" value="{{ reg.address }}" onChange="{{ setReg.address }}" style="background:var(--bg-secondary); border:1px solid var(--border-color); color:var(--text-primary); border-radius:10px; padding:10px 12px; font-size:.95rem; min-height:44px; letter-spacing:0; text-transform:none; font-family:ui-monospace, Menlo, monospace">
+            </label>
+            <label style="display:flex; flex-direction:column; gap:6px; font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-secondary); font-weight:600">Clock field
+              <input type="text" placeholder="updated_at" value="{{ reg.clock }}" onChange="{{ setReg.clock }}" style="background:var(--bg-secondary); border:1px solid var(--border-color); color:var(--text-primary); border-radius:10px; padding:10px 12px; font-size:.95rem; min-height:44px; letter-spacing:0; text-transform:none; font-family:ui-monospace, Menlo, monospace">
+            </label>
+            <label style="display:flex; flex-direction:column; gap:6px; font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-secondary); font-weight:600">Clock trust
+              <select value="{{ reg.clockTrust }}" onChange="{{ setReg.clockTrust }}" style="background:var(--bg-secondary); border:1px solid var(--border-color); color:var(--text-primary); border-radius:10px; padding:10px 12px; font-size:.95rem; min-height:44px; letter-spacing:0; text-transform:none">
+                <option value="trigger">DB trigger · honest</option>
+                <option value="client">Client-set · untrusted</option>
+                <option value="none">None · poll and hash</option>
+                <option value="unknown">Not declared</option>
+              </select>
+            </label>
+            <label style="display:flex; flex-direction:column; gap:6px; font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-secondary); font-weight:600">Deletes
+              <select value="{{ reg.deletes }}" onChange="{{ setReg.deletes }}" style="background:var(--bg-secondary); border:1px solid var(--border-color); color:var(--text-primary); border-radius:10px; padding:10px 12px; font-size:.95rem; min-height:44px; letter-spacing:0; text-transform:none">
+                <option value="hard">Hard delete → cascade</option>
+                <option value="soft">Soft flag → orphan</option>
+                <option value="never">Never deletes</option>
+              </select>
+            </label>
+            <label style="display:flex; flex-direction:column; gap:6px; font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-secondary); font-weight:600">Emits
+              <input type="text" placeholder="trip.segment" value="{{ reg.emits }}" onChange="{{ setReg.emits }}" style="background:var(--bg-secondary); border:1px solid var(--border-color); color:var(--text-primary); border-radius:10px; padding:10px 12px; font-size:.95rem; min-height:44px; letter-spacing:0; text-transform:none; font-family:ui-monospace, Menlo, monospace">
+            </label>
+            <label style="display:flex; flex-direction:column; gap:6px; font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-secondary); font-weight:600">Accepts
+              <input type="text" placeholder="—" value="{{ reg.accepts }}" onChange="{{ setReg.accepts }}" style="background:var(--bg-secondary); border:1px solid var(--border-color); color:var(--text-primary); border-radius:10px; padding:10px 12px; font-size:.95rem; min-height:44px; letter-spacing:0; text-transform:none; font-family:ui-monospace, Menlo, monospace">
+            </label>
+            <label style="display:flex; flex-direction:column; gap:6px; font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-secondary); font-weight:600">Private fields
+              <input type="text" placeholder="preserved untouched on round-trip" value="{{ reg.priv }}" onChange="{{ setReg.priv }}" style="background:var(--bg-secondary); border:1px solid var(--border-color); color:var(--text-primary); border-radius:10px; padding:10px 12px; font-size:.95rem; min-height:44px; letter-spacing:0; text-transform:none; font-family:ui-monospace, Menlo, monospace">
+            </label>
+            <label style="display:flex; flex-direction:column; gap:6px; font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-secondary); font-weight:600">Reach
+              <input type="text" placeholder=":8091 · localStorage authoritative" value="{{ reg.reach }}" onChange="{{ setReg.reach }}" style="background:var(--bg-secondary); border:1px solid var(--border-color); color:var(--text-primary); border-radius:10px; padding:10px 12px; font-size:.95rem; min-height:44px; letter-spacing:0; text-transform:none">
+            </label>
+            <label style="display:flex; flex-direction:column; gap:6px; font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-secondary); font-weight:600">Payload map
+              <input type="text" placeholder="depart_at→starts_at · title→title" value="{{ reg.payloadMap }}" onChange="{{ setReg.payloadMap }}" style="background:var(--bg-secondary); border:1px solid var(--border-color); color:var(--text-primary); border-radius:10px; padding:10px 12px; font-size:.95rem; min-height:44px; letter-spacing:0; text-transform:none; font-family:ui-monospace, Menlo, monospace">
+            </label>
+            <label style="display:flex; flex-direction:column; gap:6px; font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-secondary); font-weight:600">Owned paths
+              <input type="text" placeholder="which shared paths it writes" value="{{ reg.ownedPaths }}" onChange="{{ setReg.ownedPaths }}" style="background:var(--bg-secondary); border:1px solid var(--border-color); color:var(--text-primary); border-radius:10px; padding:10px 12px; font-size:.95rem; min-height:44px; letter-spacing:0; text-transform:none; font-family:ui-monospace, Menlo, monospace">
+            </label>
+            <label style="display:flex; flex-direction:column; gap:6px; font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-secondary); font-weight:600">Owners declared
+              <select value="{{ reg.owners }}" onChange="{{ setReg.owners }}" style="background:var(--bg-secondary); border:1px solid var(--border-color); color:var(--text-primary); border-radius:10px; padding:10px 12px; font-size:.95rem; min-height:44px; letter-spacing:0; text-transform:none">
+                <option value="yes">Yes · every shared path has one owner</option>
+                <option value="no">Not yet</option>
+              </select>
+            </label>
+          </div>
+          <sc-if value="{{ regIsApi }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex; flex-direction:column; gap:12px; padding:16px; border-radius:var(--radius-xl); background:rgba(139,92,246,.06); border:1px solid rgba(139,92,246,.3)">
+              <span style="font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:#c4b5fd; font-weight:600">Source only · fetch and cache, never passthrough</span>
+              <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px">
+                <label style="display:flex; flex-direction:column; gap:6px; font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-secondary); font-weight:600">Endpoint
+                  <input type="text" placeholder="api.example.com/v1/…" value="{{ reg.endpoint }}" onChange="{{ setReg.endpoint }}" style="background:var(--bg-secondary); border:1px solid var(--border-color); color:var(--text-primary); border-radius:10px; padding:10px 12px; font-size:.95rem; min-height:44px; letter-spacing:0; text-transform:none; font-family:ui-monospace, Menlo, monospace">
+                </label>
+                <label style="display:flex; flex-direction:column; gap:6px; font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-secondary); font-weight:600">Credential name
+                  <input type="text" placeholder="blank if no key needed" value="{{ reg.credential }}" onChange="{{ setReg.credential }}" style="background:var(--bg-secondary); border:1px solid var(--border-color); color:var(--text-primary); border-radius:10px; padding:10px 12px; font-size:.95rem; min-height:44px; letter-spacing:0; text-transform:none; font-family:ui-monospace, Menlo, monospace">
+                </label>
+                <label style="display:flex; flex-direction:column; gap:6px; font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-secondary); font-weight:600">Fetch policy
+                  <input type="text" placeholder="pg_cron · hourly" value="{{ reg.fetchPolicy }}" onChange="{{ setReg.fetchPolicy }}" style="background:var(--bg-secondary); border:1px solid var(--border-color); color:var(--text-primary); border-radius:10px; padding:10px 12px; font-size:.95rem; min-height:44px; letter-spacing:0; text-transform:none">
+                </label>
+                <label style="display:flex; flex-direction:column; gap:6px; font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-secondary); font-weight:600">Quota
+                  <input type="text" placeholder="free tier · 10k/day" value="{{ reg.quota }}" onChange="{{ setReg.quota }}" style="background:var(--bg-secondary); border:1px solid var(--border-color); color:var(--text-primary); border-radius:10px; padding:10px 12px; font-size:.95rem; min-height:44px; letter-spacing:0; text-transform:none">
+                </label>
+              </div>
+              <span style="font-size:.8rem; color:var(--text-muted); text-wrap:pretty">A named credential resolves server-side, so one key serves every consumer. Never paste the key itself here.</span>
+            </div>
+          </sc-if>
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap">
+            <span style="font-size:.85rem; color: {{ regVerdictColor }}">{{ regVerdictText }}</span>
+            <div style="display:flex; gap:8px">
+              <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Button" variant="secondary" on-click="{{ toggleCompose }}" hint-size="auto,44px">Cancel</x-import>
+              <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Button" accent="review" on-click="{{ submitReg }}" hint-size="auto,44px">File the card</x-import>
+            </div>
+          </div>
+        </div>
+      </x-import>
+    </sc-if>
+
+    <sc-if value="{{ isChannel }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex; flex-wrap:wrap; gap:24px; align-items:flex-start">
+        <div style="display:flex; flex-direction:column; gap:16px; min-width:0; flex:3 1 420px">
+
+          <div style="background:var(--bg-card); border:1px solid {{ clashBorder }}; border-radius:var(--radius-2xl); padding:24px; display:flex; flex-direction:column; gap:20px; box-shadow: {{ clashGlow }}; animation: {{ clashAnim }}; background-image: {{ clashBg }}; transition: all .3s ease">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap">
+              <div style="display:flex; align-items:center; gap:10px">
+                <span style="font-size:.8rem; letter-spacing:2px; text-transform:uppercase; font-weight:700; padding:4px 10px; border-radius:6px; color:#fff; background: {{ clashLabelBg }}; box-shadow: 0 4px 15px {{ clashLabelGlow }}">{{ clashLabel }}</span>
+                <span style="font-size:.85rem; color:var(--text-secondary)">Weekday · inside a hard lock</span>
+              </div>
+              <span style="font-size:.85rem; color:var(--text-secondary)">{{ clashCount }}</span>
+            </div>
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(230px, 1fr)); gap:20px; align-items:start">
+              <div style="display:flex; flex-direction:column; gap:10px; padding:18px; border-radius:var(--radius-xl); background:linear-gradient(135deg, rgba(239,68,68,.22), rgba(249,115,22,.08)); border:1px solid rgba(239,68,68,.45); box-shadow: inset 0 1px 0 rgba(255,255,255,.04), 0 4px 15px rgba(239,68,68,.15)">
+                <span style="font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:#f87171; font-weight:700">Holds the slot</span>
+                <span style="font-size:var(--fs-title); font-weight:700; letter-spacing:-.3px">Executive</span>
+                <span style="font-size:.85rem; color:var(--text-secondary)">Attacker · Tier 4 Non-negotiable</span>
+                <span style="font-size:1.8rem; font-weight:700; font-variant-numeric:tabular-nums; background:linear-gradient(135deg, #fdba74, #ef4444); -webkit-background-clip:text; background-clip:text; color:transparent">20:00 – 22:30</span>
+                <div style="display:flex; gap:6px; flex-wrap:wrap">
+                  <span style="font-size:.8rem; padding:4px 10px; border-radius:35px; background:linear-gradient(135deg, #ef4444, #dc2626); color:#fff; font-weight:600">Hard lock</span>
+                  <span style="font-size:.8rem; padding:4px 10px; border-radius:35px; background:var(--bg-secondary); color:var(--text-secondary)">Out of the house</span>
+                </div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:10px; min-width:0">
+                <sc-for list="{{ challengers }}" as="c" hint-placeholder-count="3">
+                  <div style="display:flex; flex-direction:column; gap:10px; padding:14px 16px; border-radius:var(--radius-xl); background:var(--bg-secondary); border:1px solid {{ c.border }}; opacity: {{ c.opacity }}; transition: all .3s ease">
+                    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap">
+                      <div style="display:flex; align-items:baseline; gap:8px; flex-wrap:wrap">
+                        <span style="font-weight:700; color: {{ c.color }}">{{ c.name }}</span>
+                        <span style="font-size:.8rem; color:var(--text-secondary)">{{ c.meta }}</span>
+                      </div>
+                      <span style="font-weight:600; font-variant-numeric:tabular-nums">{{ c.range }}</span>
+                    </div>
+                    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap">
+                      <span style="font-size:.8rem; padding:3px 10px; border-radius:35px; background:var(--bg-card); color:var(--text-secondary); border:1px solid var(--border-color)">In the house · {{ c.lock }}</span>
+                      <span style="font-size:.85rem; color: {{ c.statusColor }}">{{ c.status }}</span>
+                    </div>
+                    <sc-if value="{{ c.pending }}" hint-placeholder-val="{{ true }}">
+                      <div style="display:flex; gap:6px; flex-wrap:wrap">
+                        <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Button" size="sm" accent="review" on-click="{{ c.win }}" hint-size="auto,32px">Priority wins</x-import>
+                        <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Button" size="sm" variant="secondary" on-click="{{ c.move }}" hint-size="auto,32px">Move to {{ c.proposed }}</x-import>
+                        <sc-if value="{{ c.canYield }}" hint-placeholder-val="{{ true }}">
+                          <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Button" size="sm" variant="secondary" on-click="{{ c.yield }}" hint-size="auto,32px">Yield</x-import>
+                        </sc-if>
+                        <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Button" size="sm" variant="ghost" on-click="{{ c.escalate }}" hint-size="auto,32px">Escalate ↗</x-import>
+                      </div>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+
+          <sc-for list="{{ posts }}" as="p" hint-placeholder-count="4">
+            <div style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius-2xl); padding:18px 22px; display:flex; flex-direction:column; gap:10px; animation: aka-in .3s ease">
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap">
+                <div style="display:flex; align-items:baseline; gap:8px; flex-wrap:wrap">
+                  <span style="font-weight:700; color: {{ p.color }}">{{ p.squad }}</span>
+                  <span style="font-size:.8rem; color:var(--text-secondary)">{{ p.meta }}</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:8px">
+                  <span style="font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; font-weight:600; color: {{ p.kindColor }}">{{ p.kind }}</span>
+                  <span style="font-size:.8rem; color:var(--text-muted); font-variant-numeric:tabular-nums">{{ p.time }}</span>
+                </div>
+              </div>
+              <p style="margin:0; line-height:1.5; text-wrap:pretty">{{ p.text }}</p>
+              <sc-if value="{{ p.sub }}" hint-placeholder-val="{{ false }}">
+                <span style="font-size:.85rem; color:var(--text-secondary)">{{ p.sub }}</span>
+              </sc-if>
+              <sc-if value="{{ p.showApprove }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:4px">
+                  <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Button" size="sm" accent="review" icon="✓" on-click="{{ p.approve }}" hint-size="auto,32px">Approve</x-import>
+                  <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Button" size="sm" variant="secondary" icon="✗" on-click="{{ p.reject }}" hint-size="auto,32px">Reject</x-import>
+                  <span style="font-size:.8rem; color:var(--text-muted); align-self:center">Attackers only</span>
+                </div>
+              </sc-if>
+              <sc-if value="{{ p.showWaiting }}" hint-placeholder-val="{{ false }}">
+                <span style="font-size:.85rem; color:var(--text-muted)">Waiting on an attacker.</span>
+              </sc-if>
+            </div>
+          </sc-for>
+          <sc-if value="{{ feedEmpty }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:40px; text-align:center; color:var(--text-muted); border:1px dashed var(--border-color); border-radius:var(--radius-2xl)">The channel is quiet. Nothing to argue.</div>
+          </sc-if>
+        </div>
+
+        <aside style="display:flex; flex-direction:column; gap:16px; min-width:0; flex:1 1 240px">
+          <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Card" padding="20px" hint-size="100%,220px">
+            <div style="display:flex; flex-direction:column; gap:12px">
+              <span style="font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-secondary); font-weight:600">Today · Weekday</span>
+              <div style="display:flex; flex-direction:column; gap:2px">
+                <span style="font-size:var(--fs-lg); font-weight:700; color:#f97316">Manager Tasks</span>
+                <span style="font-size:.85rem; color:var(--text-secondary)">owns the day. Everything else interrupts.</span>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:6px">
+                <sc-for list="{{ todayItems }}" as="t" hint-placeholder-count="5">
+                  <div style="display:flex; align-items:center; gap:10px; padding:6px 0; border-top:1px solid var(--border-color)">
+                    <span style="font-variant-numeric:tabular-nums; font-size:.85rem; color:var(--text-secondary); width:44px">{{ t.start }}</span>
+                    <span style="width:6px; height:6px; border-radius:50%; background: {{ t.color }}; flex:none"></span>
+                    <span style="font-size:.95rem; font-weight:500; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">{{ t.name }}</span>
+                    <span style="font-size:.75rem; color: {{ t.tagColor }}">{{ t.tag }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </x-import>
+          <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Card" padding="20px" hint-size="100%,160px">
+            <div style="display:flex; flex-direction:column; gap:12px">
+              <span style="font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-secondary); font-weight:600">Clash rules in force</span>
+              <div style="display:flex; flex-wrap:wrap; gap:6px">
+                <sc-for list="{{ rules }}" as="r" hint-placeholder-count="4">
+                  <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Pill" accent="review" active="{{ r.on }}" on-click="{{ r.toggle }}" hint-size="auto,32px">{{ r.name }}</x-import>
+                </sc-for>
+              </div>
+              <span style="font-size:.8rem; color:var(--text-muted)">Rules run before priority. Weekend shields-up hides all Work/Growth claims on the weekend board.</span>
+            </div>
+          </x-import>
+          <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Card" padding="20px" hint-size="100%,120px">
+            <div style="display:flex; flex-direction:column; gap:10px">
+              <span style="font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-secondary); font-weight:600">In the channel</span>
+              <div style="display:flex; gap:8px; flex-wrap:wrap">
+                <x-import component-from-global-scope="ScripturaDesignSystem_72b484.StatChip" value="7" label="attackers" tone="streak" hint-size="auto,40px"></x-import>
+                <x-import component-from-global-scope="ScripturaDesignSystem_72b484.StatChip" value="{{ allyCount }}" label="allies" tone="neutral" hint-size="auto,40px"></x-import>
+                <x-import component-from-global-scope="ScripturaDesignSystem_72b484.StatChip" value="{{ outsideCount }}" label="no read" tone="neutral" hint-size="auto,40px"></x-import>
+              </div>
+            </div>
+          </x-import>
+        </aside>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isBoard }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex; flex-direction:column; gap:20px">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap">
+          <x-import component-from-global-scope="ScripturaDesignSystem_72b484.SegmentedControl" options="{{ boardOptions }}" value="{{ board }}" on-change="{{ setBoard }}" accent="review" hint-size="auto,44px"></x-import>
+          <span style="font-size:.85rem; color:var(--text-secondary)">{{ boardNote }}</span>
+        </div>
+        <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Card" hint-size="100%,320px">
+          <div style="display:flex; flex-direction:column; gap:18px">
+            <div style="display:flex; align-items:baseline; gap:10px; flex-wrap:wrap">
+              <span style="font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-secondary); font-weight:600">Base</span>
+              <span style="font-size:var(--fs-lg); font-weight:700; color:#f97316">{{ baseName }}</span>
+              <span style="font-size:.85rem; color:var(--text-secondary)">{{ baseNote }}</span>
+            </div>
+            <div style="display:grid; grid-template-columns:minmax(96px, 130px) minmax(0, 1fr); column-gap:12px; row-gap:6px; align-items:center">
+              <span></span>
+              <div style="position:relative; height:18px">
+                <sc-for list="{{ ticks }}" as="k" hint-placeholder-count="7">
+                  <span style="position:absolute; left: {{ k.left }}%; top:0; transform:translateX(-50%); font-size:.75rem; color:var(--text-muted); font-variant-numeric:tabular-nums">{{ k.label }}</span>
+                </sc-for>
+              </div>
+              <span style="font-size:.85rem; color:#fdba74; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">{{ baseName }} · base</span>
+              <div style="position:relative; height:28px; border-radius:8px; background:linear-gradient(135deg, rgba(249,115,22,.14), rgba(249,115,22,.05)); border:1px solid rgba(249,115,22,.25)"></div>
+              <sc-for list="{{ blocks }}" as="b" hint-placeholder-count="6">
+                <div style="display:flex; flex-direction:column; min-width:0; line-height:1.2">
+                  <span style="font-size:.85rem; font-weight:600; color: {{ b.color }}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">{{ b.name }}</span>
+                  <span style="font-size:.7rem; color:var(--text-secondary); font-variant-numeric:tabular-nums; white-space:nowrap">{{ b.range }}</span>
+                </div>
+                <div style="position:relative; height:28px">
+                  <sc-for list="{{ ticks }}" as="k" hint-placeholder-count="7">
+                    <span style="position:absolute; left: {{ k.left }}%; top:-3px; bottom:-3px; border-left:1px solid var(--border-color)"></span>
+                  </sc-for>
+                  <div style="position:absolute; left: {{ b.left }}%; width: {{ b.width }}%; min-width:6px; top:0; bottom:0; border-radius:8px; background: {{ b.bg }}; border:1px solid {{ b.border }}; box-shadow: {{ b.glow }}; transition: all .3s ease" title="{{ b.name }} {{ b.range }}"></div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="display:flex; gap:16px; flex-wrap:wrap; font-size:.8rem; color:var(--text-secondary)">
+              <span style="display:flex; align-items:center; gap:6px"><span style="width:10px; height:10px; border-radius:3px; background:rgba(249,115,22,.5)"></span>Hard lock</span>
+              <span style="display:flex; align-items:center; gap:6px"><span style="width:10px; height:10px; border-radius:3px; background:var(--bg-elevated); border:1px solid var(--border-color)"></span>Interrupt</span>
+              <span style="display:flex; align-items:center; gap:6px"><span style="width:10px; height:10px; border-radius:3px; background:rgba(239,68,68,.5)"></span>Clash, unresolved</span>
+            </div>
+          </div>
+        </x-import>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:16px">
+          <sc-for list="{{ boardList }}" as="i" hint-placeholder-count="6">
+            <div style="background:var(--bg-card); border:1px solid {{ i.border }}; border-radius:var(--radius-2xl); padding:16px 18px; display:flex; flex-direction:column; gap:6px">
+              <div style="display:flex; justify-content:space-between; gap:8px; align-items:baseline">
+                <span style="font-weight:700; color: {{ i.color }}">{{ i.name }}</span>
+                <span style="font-variant-numeric:tabular-nums; font-weight:600">{{ i.range }}</span>
+              </div>
+              <span style="font-size:.85rem; color:var(--text-secondary)">{{ i.meta }}</span>
+              <span style="font-size:.8rem; color: {{ i.noteColor }}">{{ i.note }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isStanding }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex; flex-direction:column; gap:20px">
+        <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Card" hint-size="100%,140px">
+          <div style="display:flex; flex-direction:column; gap:12px">
+            <div style="display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap">
+              <span style="font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:#f97316; font-weight:600">Attackers · hold the channel</span>
+              <span style="font-size:.85rem; color:var(--text-secondary)">The source. No standing to earn.</span>
+            </div>
+            <div style="display:flex; flex-wrap:wrap; gap:8px">
+              <sc-for list="{{ attackers }}" as="a" hint-placeholder-count="7">
+                <span style="padding:8px 14px; border-radius:35px; font-weight:600; font-size:.95rem; background:linear-gradient(135deg, rgba(249,115,22,.22), rgba(234,88,12,.10)); border:1px solid rgba(249,115,22,.35); color:#fdba74">{{ a.name }}</span>
+              </sc-for>
+            </div>
+          </div>
+        </x-import>
+
+        <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Card" hint-size="100%,420px">
+          <div style="display:flex; flex-direction:column; gap:16px">
+            <div style="display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap">
+              <span style="font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-secondary); font-weight:600">Allies · admitted, marked</span>
+              <span style="font-size:.85rem; color:var(--text-secondary); text-wrap:pretty">Standing deepens with use, decays when quiet. Caps at 90 — an ally never quite reaches attacker.</span>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:12px">
+              <sc-for list="{{ allies }}" as="a" hint-placeholder-count="5">
+                <div style="display:flex; flex-wrap:wrap; gap:16px; align-items:center; padding:14px 16px; border-radius:var(--radius-xl); background:var(--bg-secondary); border:1px solid {{ a.border }}">
+                  <div style="display:flex; flex-direction:column; gap:4px; min-width:0; flex:0 1 180px">
+                    <div style="display:flex; align-items:center; gap:8px">
+                      <span style="width:10px; height:10px; border-radius:50%; background: {{ a.color }}; box-shadow: 0 0 10px {{ a.color }}; flex:none"></span>
+                      <span style="font-weight:700; color: {{ a.color }}; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">{{ a.name }}</span>
+                    </div>
+                    <span style="font-size:.8rem; color:var(--text-secondary)">{{ a.meta }}</span>
+                    <span style="font-size:.8rem; color: {{ a.warnColor }}">{{ a.warn }}</span>
+                  </div>
+                  <div style="display:flex; flex-direction:column; gap:8px; min-width:0; flex:1 1 260px">
+                    <div style="display:flex; align-items:baseline; gap:8px">
+                      <span style="font-size:var(--fs-h2); font-weight:700; line-height:1; font-variant-numeric:tabular-nums; color: {{ a.color }}">{{ a.standing }}</span>
+                      <span style="font-size:.8rem; color:var(--text-muted); white-space:nowrap">{{ a.capNote }}</span><span style="font-size:.75rem; color:#f97316; white-space:nowrap; margin-left:auto">cap 90</span>
+                    </div>
+                    <div style="position:relative; height:8px; border-radius:4px; background:var(--bg-primary); border:1px solid var(--border-color)">
+                      <div style="position:absolute; left:0; top:0; bottom:0; width: {{ a.pct }}%; border-radius:4px; background:linear-gradient(90deg, {{ a.classColor }}, {{ a.color }}); transition: width .4s ease"></div>
+                      <div style="position:absolute; left:90%; top:-5px; bottom:-5px; border-left:2px solid #f97316; opacity:.8"></div>
+                    </div>
+                    <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:4px">
+                      <sc-for list="{{ a.inputs }}" as="n" hint-placeholder-count="6">
+                        <span style="font-size:.75rem; padding:3px 8px; border-radius:6px; background:var(--bg-card); border:1px solid var(--border-color); color:var(--text-secondary); font-variant-numeric:tabular-nums; white-space:nowrap"><span style="color:var(--text-primary); font-weight:600">{{ n.v }}</span> {{ n.k }}</span>
+                      </sc-for>
+                    </div>
+                  </div>
+                  <sc-if value="{{ isAttacker }}" hint-placeholder-val="{{ true }}">
+                    <div style="display:flex; flex-direction:row; flex-wrap:wrap; gap:6px; align-items:center">
+                      <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Button" size="sm" accent="review" icon="▲" on-click="{{ a.upvote }}" hint-size="auto,32px">Upvote</x-import>
+                      <sc-if value="{{ a.decaying }}" hint-placeholder-val="{{ false }}">
+                        <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Button" size="sm" variant="secondary" on-click="{{ a.nudge }}" hint-size="auto,32px">Nudge</x-import>
+                      </sc-if>
+                      <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Button" size="sm" variant="ghost" on-click="{{ a.revoke }}" hint-size="auto,32px">Revoke</x-import>
+                    </div>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </x-import>
+
+        <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Card" hint-size="100%,220px">
+          <div style="display:flex; flex-direction:column; gap:12px">
+            <div style="display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap">
+              <span style="font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-secondary); font-weight:600">Outside · no read</span>
+              <span style="font-size:.85rem; color:var(--text-secondary)">An attacker admits one at a time.</span>
+            </div>
+            <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:10px">
+              <sc-for list="{{ outsiders }}" as="o" hint-placeholder-count="8">
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 14px; border-radius:var(--radius-md); background:var(--bg-secondary); border:1px solid var(--border-color)">
+                  <div style="display:flex; flex-direction:column; gap:2px; min-width:0">
+                    <span style="font-weight:600; color: {{ o.color }}; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">{{ o.name }}</span>
+                    <span style="font-size:.75rem; color: {{ o.noteColor }}">{{ o.note }}</span>
+                  </div>
+                  <sc-if value="{{ isAttacker }}" hint-placeholder-val="{{ true }}">
+                    <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Button" size="sm" variant="secondary" on-click="{{ o.admit }}" hint-size="auto,32px">Admit</x-import>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </x-import>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isHub }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex; flex-direction:column; gap:22px">
+        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding:12px 16px; border-radius:var(--radius-xl); background:var(--bg-card); border:1px solid {{ liveBorder }}">
+          <span style="display:flex; align-items:center; gap:8px; font-size:.85rem; font-weight:600; color: {{ liveColor }}; white-space:nowrap"><span style="width:8px; height:8px; border-radius:50%; background: {{ liveColor }}; box-shadow: 0 0 10px {{ liveColor }}"></span>{{ liveLabel }}</span>
+          <span style="font-size:.85rem; color:var(--text-secondary); flex:1 1 200px; min-width:0; text-wrap:pretty">{{ liveNote }}</span>
+          <sc-if value="{{ showSignIn }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap">
+              <input type="email" placeholder="you@example.com" value="{{ authEmail }}" onChange="{{ setAuthEmail }}" style="background:var(--bg-secondary); border:1px solid var(--border-color); color:var(--text-primary); border-radius:10px; padding:10px 12px; font-size:.9rem; min-height:44px; width:220px">
+              <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Button" size="sm" accent="review" on-click="{{ sendLink }}" hint-size="auto,44px">Send magic link</x-import>
+            </div>
+          </sc-if>
+          <sc-if value="{{ showSignOut }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex; gap:8px; align-items:center">
+              <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Button" size="sm" variant="secondary" on-click="{{ reloadLive }}" hint-size="auto,44px">↻ Reload</x-import>
+              <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Button" size="sm" variant="ghost" on-click="{{ signOut }}" hint-size="auto,44px">Sign out</x-import>
+            </div>
+          </sc-if>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap">
+          <x-import component-from-global-scope="ScripturaDesignSystem_72b484.StatChip" value="{{ hubRegistered }}" label="cards filed" tone="neutral" hint-size="auto,40px"></x-import>
+          <x-import component-from-global-scope="ScripturaDesignSystem_72b484.StatChip" value="{{ hubLinkable }}" label="linkable" tone="streak" hint-size="auto,40px"></x-import>
+          <x-import component-from-global-scope="ScripturaDesignSystem_72b484.StatChip" value="{{ hubCost }}" label="linkable, with cost" tone="neutral" hint-size="auto,40px"></x-import>
+          <x-import component-from-global-scope="ScripturaDesignSystem_72b484.StatChip" value="{{ hubNotReady }}" label="not ready" tone="neutral" hint-size="auto,40px"></x-import>
+          <x-import component-from-global-scope="ScripturaDesignSystem_72b484.StatChip" value="{{ hubSourceCount }}" label="API sources" tone="neutral" hint-size="auto,40px"></x-import>
+          <x-import component-from-global-scope="ScripturaDesignSystem_72b484.StatChip" value="{{ hubLive }}" label="links live" tone="neutral" hint-size="auto,40px"></x-import>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:14px">
+          <div style="display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap">
+            <span style="font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:#f97316; font-weight:600">Registry · one card per app</span>
+            <span style="font-size:.85rem; color:var(--text-secondary); text-wrap:pretty">Six questions decide it: a stable address, a change signal, a known pattern, a payload map, owned paths, and reach. Pass all six and the app links to anything — even apps that don't exist yet.</span>
+          </div>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:14px">
+            <sc-for list="{{ hubApps }}" as="h" hint-placeholder-count="7">
+              <div style="background:var(--bg-card); border:1px solid {{ h.border }}; border-radius:var(--radius-2xl); padding:18px 20px; display:flex; flex-direction:column; gap:14px; box-shadow: {{ h.glow }}; animation: aka-in .3s ease">
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap">
+                  <div style="display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; min-width:0">
+                    <span style="font-weight:700; font-size:var(--fs-lg)">{{ h.name }}</span>
+                    <span style="font-size:.75rem; font-family:ui-monospace, Menlo, monospace; color:var(--text-muted)">{{ h.id }}</span>
+                  </div>
+                  <span style="font-size:.7rem; letter-spacing:1.5px; text-transform:uppercase; font-weight:700; padding:4px 10px; border-radius:6px; color:#fff; background: {{ h.verdictBg }}; box-shadow: 0 4px 15px {{ h.verdictGlow }}; white-space:nowrap">{{ h.verdict }}</span>
+                </div>
+                <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center">
+                  <span style="font-size:.75rem; font-weight:600; padding:3px 10px; border-radius:35px; color: {{ h.patColor }}; background: {{ h.patBg }}; border:1px solid {{ h.patBorder }}">{{ h.patLabel }}</span>
+                  <sc-for list="{{ h.checks }}" as="q" hint-placeholder-count="4">
+                    <span style="display:flex; align-items:center; gap:5px; font-size:.75rem; color:var(--text-secondary); padding:3px 8px; border-radius:6px; background:var(--bg-secondary); border:1px solid var(--border-color)" title="{{ q.hint }}"><span style="width:6px; height:6px; border-radius:50%; background: {{ q.color }}; box-shadow: 0 0 6px {{ q.color }}"></span>{{ q.k }}</span>
+                  </sc-for>
+                </div>
+                <div style="display:grid; grid-template-columns:72px minmax(0, 1fr); gap:7px 10px; font-size:.85rem; line-height:1.4">
+                  <sc-for list="{{ h.lines }}" as="l" hint-placeholder-count="7">
+                    <span style="color:var(--text-muted); font-size:.68rem; letter-spacing:1.2px; text-transform:uppercase; font-weight:600; padding-top:3px">{{ l.k }}</span>
+                    <span style="color: {{ l.color }}; font-family: {{ l.font }}; font-size: {{ l.size }}; overflow-wrap:anywhere; text-wrap:pretty">{{ l.v }}</span>
+                  </sc-for>
+                </div>
+                <sc-if value="{{ h.hasFlags }}" hint-placeholder-val="{{ true }}">
+                  <div style="display:flex; flex-direction:column; gap:5px; padding-top:10px; border-top:1px solid var(--border-color)">
+                    <sc-for list="{{ h.flags }}" as="fl" hint-placeholder-count="2">
+                      <span style="font-size:.8rem; color:#fdba74; display:flex; gap:7px; line-height:1.4"><span style="color:#f59e0b; flex:none">▲</span><span style="text-wrap:pretty">{{ fl.text }}</span></span>
+                    </sc-for>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:14px">
+          <div style="display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap">
+            <span style="font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:#8b5cf6; font-weight:600">Sources · APIs the hub fetches</span>
+            <span style="font-size:.85rem; color:var(--text-secondary); text-wrap:pretty">A source emits and never accepts. Two apps on one API is still one call — pull and cache, never synchronous passthrough.</span>
+          </div>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(290px, 1fr)); gap:14px">
+            <sc-for list="{{ hubSources }}" as="s" hint-placeholder-count="3">
+              <div style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius-2xl); padding:18px 20px; display:flex; flex-direction:column; gap:12px">
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap">
+                  <div style="display:flex; align-items:baseline; gap:8px; min-width:0; flex-wrap:wrap">
+                    <span style="font-weight:700; font-size:var(--fs-lg)">{{ s.name }}</span>
+                    <span style="font-size:.72rem; font-weight:600; padding:2px 9px; border-radius:35px; color:#c4b5fd; background:rgba(139,92,246,.14); border:1px solid rgba(139,92,246,.4)">{{ s.kind }}</span>
+                  </div>
+                  <span style="font-size:.7rem; letter-spacing:1.5px; text-transform:uppercase; font-weight:700; padding:4px 10px; border-radius:6px; color:#fff; background: {{ s.verdictBg }}; box-shadow: 0 4px 15px {{ s.verdictGlow }}; white-space:nowrap">{{ s.verdict }}</span>
+                </div>
+                <div style="display:grid; grid-template-columns:72px minmax(0, 1fr); gap:7px 10px; font-size:.85rem; line-height:1.4">
+                  <span style="color:var(--text-muted); font-size:.68rem; letter-spacing:1.2px; text-transform:uppercase; font-weight:600; padding-top:3px">Endpoint</span>
+                  <span style="font-family:ui-monospace, Menlo, monospace; font-size:.78rem; overflow-wrap:anywhere">{{ s.endpoint }}</span>
+                  <span style="color:var(--text-muted); font-size:.68rem; letter-spacing:1.2px; text-transform:uppercase; font-weight:600; padding-top:3px">Emits</span>
+                  <span style="font-family:ui-monospace, Menlo, monospace; font-size:.8rem">{{ s.emits }}</span>
+                  <span style="color:var(--text-muted); font-size:.68rem; letter-spacing:1.2px; text-transform:uppercase; font-weight:600; padding-top:3px">Fetch</span>
+                  <span>{{ s.fetchPolicy }}</span>
+                  <span style="color:var(--text-muted); font-size:.68rem; letter-spacing:1.2px; text-transform:uppercase; font-weight:600; padding-top:3px">Cache</span>
+                  <span style="color:var(--text-secondary)">{{ s.cached }}</span>
+                  <span style="color:var(--text-muted); font-size:.68rem; letter-spacing:1.2px; text-transform:uppercase; font-weight:600; padding-top:3px">Quota</span>
+                  <span style="color:var(--text-secondary)">{{ s.quota }}</span>
+                  <span style="color:var(--text-muted); font-size:.68rem; letter-spacing:1.2px; text-transform:uppercase; font-weight:600; padding-top:3px">Key</span>
+                  <span style="color: {{ s.credColor }}; font-family:ui-monospace, Menlo, monospace; font-size:.8rem">{{ s.credential }}</span>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:7px; padding-top:10px; border-top:1px solid var(--border-color)">
+                  <span style="font-size:.75rem; color:var(--text-muted); letter-spacing:1.2px; text-transform:uppercase; font-weight:600">{{ s.sharedNote }}</span>
+                  <div style="display:flex; gap:6px; flex-wrap:wrap">
+                    <sc-for list="{{ s.consumers }}" as="cm" hint-placeholder-count="3">
+                      <span style="font-size:.78rem; padding:3px 10px; border-radius:35px; background:var(--bg-secondary); border:1px solid var(--border-color); color:var(--text-secondary); white-space:nowrap">{{ cm.name }}</span>
+                    </sc-for>
+                  </div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Card" hint-size="100%,200px">
+          <div style="display:flex; flex-direction:column; gap:14px">
+            <div style="display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap">
+              <span style="font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-secondary); font-weight:600">Credentials · one key, many consumers</span>
+              <span style="font-size:.85rem; color:var(--text-secondary)">Referenced by name, resolved server-side. Rotate once.</span>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:10px">
+              <sc-for list="{{ hubCreds }}" as="cr" hint-placeholder-count="2">
+                <div style="display:flex; flex-direction:column; gap:8px; padding:14px 16px; border-radius:var(--radius-xl); background:var(--bg-secondary); border:1px solid {{ cr.border }}">
+                  <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap">
+                    <span style="font-weight:700; font-family:ui-monospace, Menlo, monospace; font-size:.9rem">{{ cr.name }}</span>
+                    <span style="font-size:.8rem; color:var(--text-secondary)">{{ cr.scope }}</span>
+                    <span style="font-size:.8rem; color: {{ cr.whereColor }}; margin-left:auto; white-space:nowrap">{{ cr.where }}</span>
+                  </div>
+                  <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap">
+                    <span style="font-size:.72rem; color:var(--text-muted); letter-spacing:1.2px; text-transform:uppercase; font-weight:600">{{ cr.count }}</span>
+                    <sc-for list="{{ cr.consumers }}" as="cc" hint-placeholder-count="3">
+                      <span style="font-size:.78rem; padding:3px 10px; border-radius:35px; background:var(--bg-card); border:1px solid var(--border-color); color:var(--text-secondary); white-space:nowrap">{{ cc.name }}</span>
+                    </sc-for>
+                    <span style="font-size:.78rem; color:var(--text-muted); margin-left:auto">Rotated: {{ cr.rotated }}</span>
+                  </div>
+                  <sc-if value="{{ cr.risk }}" hint-placeholder-val="{{ false }}">
+                    <span style="font-size:.8rem; color:#fdba74; display:flex; gap:7px; line-height:1.4"><span style="color:#f59e0b; flex:none">▲</span><span style="text-wrap:pretty">{{ cr.risk }}</span></span>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </x-import>
+
+        <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Card" hint-size="100%,360px">
+          <div style="display:flex; flex-direction:column; gap:14px">
+            <div style="display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap">
+              <span style="font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-secondary); font-weight:600">Links · what crosses today</span>
+              <span style="font-size:.85rem; color:var(--text-secondary)">Every link fits one of three patterns, or the pattern list is incomplete — not the app.</span>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:8px">
+              <sc-for list="{{ hubLinks }}" as="lk" hint-placeholder-count="6">
+                <div style="display:flex; flex-wrap:wrap; align-items:center; gap:12px; padding:12px 14px; border-radius:var(--radius-xl); background:var(--bg-secondary); border:1px solid {{ lk.border }}">
+                  <div style="display:flex; align-items:center; gap:8px; flex:0 0 auto; min-width:230px">
+                    <span style="font-weight:700; white-space:nowrap">{{ lk.from }}</span>
+                    <span style="color: {{ lk.patColor }}; font-size:1.1rem; line-height:1">{{ lk.arrow }}</span>
+                    <span style="font-weight:700; white-space:nowrap">{{ lk.to }}</span>
+                  </div>
+                  <span style="font-size:.75rem; font-weight:600; padding:3px 10px; border-radius:35px; color: {{ lk.patColor }}; background: {{ lk.patBg }}; border:1px solid {{ lk.patBorder }}; white-space:nowrap">{{ lk.patLabel }}</span>
+                  <span style="font-size:.72rem; font-weight:600; padding:3px 9px; border-radius:6px; color: {{ lk.accessColor }}; background:var(--bg-card); border:1px solid {{ lk.accessBorder }}; white-space:nowrap; letter-spacing:.5px; text-transform:uppercase">{{ lk.access }}</span>
+                  <span style="display:flex; align-items:center; gap:6px; font-size:.85rem; font-weight:600; color: {{ lk.stateColor }}; white-space:nowrap"><span style="width:7px; height:7px; border-radius:50%; background: {{ lk.stateColor }}; box-shadow: 0 0 8px {{ lk.stateColor }}; animation: {{ lk.stateAnim }}"></span>{{ lk.stateLabel }}</span>
+                  <span style="font-size:.85rem; color:var(--text-secondary); flex:1 1 260px; min-width:0; text-wrap:pretty">{{ lk.note }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </x-import>
+
+        <div style="display:flex; flex-direction:column; gap:14px">
+          <div style="display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap">
+            <span style="font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-secondary); font-weight:600">Vocab · agreed character for character</span>
+            <span style="font-size:.85rem; color:var(--text-secondary)">One row per shared id. Apps read it; they never carry a local copy.</span>
+          </div>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:14px">
+            <sc-for list="{{ hubVocab }}" as="v" hint-placeholder-count="4">
+              <div style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius-2xl); padding:16px 18px; display:flex; flex-direction:column; gap:10px">
+                <div style="display:flex; align-items:baseline; justify-content:space-between; gap:8px">
+                  <span style="font-weight:700">{{ v.name }}</span>
+                  <span style="font-size:.75rem; color:var(--text-muted); font-variant-numeric:tabular-nums">{{ v.count }}</span>
+                </div>
+                <div style="display:flex; flex-wrap:wrap; gap:6px">
+                  <sc-for list="{{ v.items }}" as="it" hint-placeholder-count="7">
+                    <span style="font-size:.78rem; padding:3px 9px; border-radius:6px; background:var(--bg-secondary); border:1px solid {{ it.border }}; color: {{ it.color }}; font-family: {{ v.font }}; display:flex; align-items:center; gap:6px; white-space:nowrap"><sc-if value="{{ it.swatch }}" hint-placeholder-val="{{ false }}"><span style="width:10px; height:10px; border-radius:3px; background: {{ it.swatch }}; flex:none"></span></sc-if>{{ it.v }}</span>
+                  </sc-for>
+                </div>
+                <sc-if value="{{ v.flag }}" hint-placeholder-val="{{ false }}">
+                  <span style="font-size:.8rem; color:#fdba74; display:flex; gap:7px; line-height:1.4"><span style="color:#f59e0b; flex:none">▲</span><span style="text-wrap:pretty">{{ v.flag }}</span></span>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;viewAs&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;attacker&quot;,&quot;ally&quot;],&quot;default&quot;:&quot;attacker&quot;,&quot;tsType&quot;:&quot;'attacker' | 'ally'&quot;,&quot;section&quot;:&quot;Access&quot;},&quot;nav&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;rail&quot;,&quot;bar&quot;],&quot;default&quot;:&quot;rail&quot;,&quot;tsType&quot;:&quot;'rail' | 'bar'&quot;,&quot;section&quot;:&quot;Navigation&quot;},&quot;moon&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;rising&quot;,&quot;hidden&quot;],&quot;default&quot;:&quot;rising&quot;,&quot;tsType&quot;:&quot;'rising' | 'hidden'&quot;,&quot;section&quot;:&quot;Atmosphere&quot;},&quot;atmosphere&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;whisper&quot;,&quot;strong&quot;,&quot;off&quot;],&quot;default&quot;:&quot;strong&quot;,&quot;tsType&quot;:&quot;'whisper' | 'strong' | 'off'&quot;,&quot;section&quot;:&quot;Atmosphere&quot;}}">
+class Component extends DCLogic {
+  ATT = '#f97316'; MID = '#3b82f6'; DEF = '#22c55e'; LIVE = '#ef4444';
+  BENT = { mid: 'color-mix(in oklch, #3b82f6 67%, #f97316 33%)', def: 'color-mix(in oklch, #22c55e 67%, #f97316 33%)' };
+  CLS = { att: 'Attacker', mid: 'Mid-player', def: 'Defender' };
+  TIERS = { 4: 'Tier 4 Non-negotiable', 3: 'Tier 3 Self-care', 2: 'Tier 2 Work/Growth', 1: 'Tier 1 Maintenance' };
+  SQUADS = [
+    ['App Gen','att',2],['Quick Study','att',2],['AI Study','att',2],['Executive','att',4],['Manager Tasks','att',2],['Reminders','att',2],['People Tasks','att',2],
+    ['Food','mid',3],['Cost','mid',2],['Weather','mid',1],['Health','mid',3],['Exercise','mid',3],['Eagle Eye','mid',1],['Ghost Tracker','mid',1],['Part Inventory','mid',1],
+    ['Sleep','def',3],['Psychology','def',3],['Fashion','def',1],['Cleaning','def',1]
+  ].map(([name, cls, tier]) => ({ name, cls, tier }));
+  KEYS = [['posts','posts landed'],['resolved','conflicts resolved'],['approvals','approvals received'],['yielded','times yielded'],['days','days since admission'],['upvotes','attacker upvotes']];
+
+  // hub — one card per app; the four questions are computed, not stored
+  PAT = { stream: ['Stream', '#3b82f6'], document: ['Document', '#8b5cf6'], reply: ['Request / reply', '#f59e0b'] };
+  SESSION = { jwt: 'User JWT · RLS applies', guest: 'Guest · localStorage first, cloud mirrors', service: 'Service role · scopes user_id itself', unknown: 'Not declared' };
+  TRUST = { trigger: 'DB trigger · honest', client: 'Client-set · untrusted, ordered by seq instead', none: 'None · poll and hash', unknown: 'Not declared' };
+  DELETES = { hard: 'Hard delete → cascade the link', soft: 'Soft flag → orphan the link, keep the row', never: 'Never deletes' };
+  HUB_APPS = [
+    { id: 'wf', name: 'Weekly Focus', role: 'app', pattern: 'stream', address: '{board_id, item_key, sub_id} · base36 / djb2, not a uuid', clock: 'subtasks[].u · ms epoch', clockTrust: 'client', emits: 'task.upsert, note', accepts: 'task.upsert (v65, unbuilt)', deletes: 'soft', priv: 'when md urg dl loc tag lat latAt rv', owners: true, session: 'jwt',
+      reach: 'browser · shared Supabase project · cloud only', payloadMap: 't→title · done→done · ctx[]→ctx[] · when→due', ownedPaths: 'subtasks[].t · done · ctx[] — private fields never written by anyone else',
+      flags: ['del / lat flip without bumping u — park and delete are invisible incrementally', 'every write is a whole-array read-modify-write; never drop tombstones'] },
+    { id: 'rm', name: 'Roadmap', role: 'app', pattern: 'stream', address: '{id} · uuid', clock: 'updated_at', clockTrust: 'trigger', emits: 'task.upsert', accepts: 'task.upsert', deletes: 'hard', priv: 'folder, road, project', owners: true, session: 'jwt',
+      reach: 'browser · shared Supabase project · cloud only', payloadMap: 'title→title · done→done · ctx[]→ctx[] — folder / road stay private', ownedPaths: 'roadmap_tasks.* — whole row, single owner',
+      flags: ['single-owner RLS since Sep 21 — multi-tenant is a schema change, not a policy change', 'tab-scoped sync guard; the Sep 21 race made a duplicate folder'] },
+    { id: 'cal', name: 'Calendar', role: 'app', pattern: 'document', address: '{event_id} · doc paths away · done · overrides · block', clock: 'updated_at · client-set', clockTrust: 'client', emits: 'cycles kind:digital, away, done, overrides, block', accepts: 'task.upsert, note, trip.segment, forecast, trash.pickup, holiday', deletes: 'soft', priv: 'entries, diary, birthdays, preferences, 14 themes', owners: true, session: 'guest',
+      reach: ':8080 · localStorage authoritative · offline-capable', payloadMap: 'title→title · starts_at→starts_at · all_day→all_day · kind_hint→render rule', ownedPaths: 'away · done · overrides · block · show · wm · cycles[kind:digital]',
+      flags: ['localStorage is truth — brokered fields are last-known-good when offline', 'different origin from Sukkiri: no local path exists, brokered or not'] },
+    { id: 'sukkiri', name: 'Sukkiri', role: 'app', pattern: 'document', address: 'sk_<cycleId> · garbage[].id', clock: 'updated_at · client-set', clockTrust: 'client', emits: 'garbage[], cycles kind:home, purchase_request', accepts: 'away, overrides, done, block · pull only', deletes: 'never', priv: 'photos, timers, reports, sukkiri_state', owners: true, session: 'jwt',
+      reach: ':8091 · localStorage authoritative · offline-capable', payloadMap: 'label→label · every→interval_days · anchor→anchor · icon→vocab.icons · color→vocab.palette', ownedPaths: 'garbage[] · cycles[kind:home] · anchor — never away / done / overrides / block',
+      flags: ['whole-row upsert can clobber Calendar\'s done{} — must be shredded by owner', 'anchor moves on every done; a stale anchor draws the wrong grid'] },
+    { id: 'cost', name: 'Cost', role: 'app', pattern: 'reply', address: '{id} · req<epoch><rand>', clock: 'none · status written in place', clockTrust: 'none', emits: 'status: approved | rejected', accepts: 'purchase_request', deletes: 'never', priv: 'expenses, JPY ledger', owners: true, session: 'jwt',
+      reach: 'separate project · paste-JSON fallback across origins', payloadMap: 'items[].priceYen→amount · currency→JPY fixed · status→reply.status', ownedPaths: 'reply.status only — never reorders or deletes the request',
+      flags: ['no change signal — origin re-reads on focus and every 15 s'] },
+    { id: 'travel', name: 'Travel Plan', role: 'app', pattern: 'stream', address: '{trip_id, segment_id}', clock: '', clockTrust: 'unknown', emits: 'trip.segment', accepts: '—', deletes: 'hard', priv: '—', owners: false, session: 'unknown',
+      reach: '', payloadMap: '', ownedPaths: '',
+      flags: ['card incomplete — clock, session, reach, payload map and owners not declared'] },
+    { id: 'weather', name: 'Weather', role: 'app', pattern: 'stream', address: '{location, date}', clock: 'none · relays its source', clockTrust: 'none', emits: 'forecast', accepts: '—', deletes: 'never', priv: '—', owners: true, session: 'service',
+      reach: 'server-side adapter · no client path', payloadMap: 'daily.code→condition · tmax→high_c · tmin→low_c · pop→rain_pct', ownedPaths: 'forecast.* — read-only relay, owns nothing',
+      flags: ['relays open-meteo — needs an active adapter (edge function or pg_cron); a table alone fetches nothing'] }
+  ];
+  HUB_SOURCES = [
+    { id: 'open-meteo', name: 'Open-Meteo', kind: 'Forecast', endpoint: 'api.open-meteo.com/v1/forecast', credential: null, fetchPolicy: 'pg_cron · hourly · 1 call', quota: 'free tier · 10k/day · no key', emits: 'forecast', consumers: ['cal', 'travel', 'exercise'], cached: 'akatsuki_cache · 7 days per location', secret: 'none needed' },
+    { id: 'holidays', name: 'Nager.Date holidays', kind: 'Reference', endpoint: 'date.nager.at/api/v3/PublicHolidays/{year}/JP', credential: null, fetchPolicy: 'pg_cron · yearly · 1 call', quota: 'free · unmetered', emits: 'holiday', consumers: ['cal', 'sukkiri'], cached: 'akatsuki_cache · until year end', secret: 'none needed' },
+    { id: 'gsheets', name: 'Google Sheets', kind: 'Import', endpoint: 'sheets.googleapis.com/v4', credential: 'gcp_sheets_ro', fetchPolicy: 'on demand · user-triggered', quota: '300 req/min per project', emits: 'ledger.row', consumers: ['cost'], cached: 'none · pass to store', secret: 'vault · server-side only' }
+  ];
+  HUB_CREDS = [
+    { name: 'gcp_sheets_ro', scope: 'Sheets read-only', where: 'vault · resolved in the edge function', consumers: ['gsheets'], rotated: 'never — rotate on first real use' },
+    { name: 'supabase_anon', scope: 'Shared project, RLS-gated', where: 'client bundle — visible to anyone', consumers: ['wf', 'rm', 'cal', 'sukkiri', 'cost'], rotated: 'gated Sep 21 by 0003_real_gate.sql', risk: 'Ships in every bundle. Safe only because RLS is now real — it was FOR ALL · TO PUBLIC · USING (true) until Sep 21.' }
+  ];
+  HUB_LINKS = [
+    { from: 'wf', to: 'rm', pattern: 'stream', access: 'stream', state: 'half', note: 'WF → RM live: 12 of ~181 mirrored, study: prefix only. RM → WF exists in code, nothing pulls it — source = rm is 0 rows.' },
+    { from: 'wf', to: 'cal', pattern: 'stream', access: 'direct', state: 'defect', note: 'Calendar reads weekly_focus_entries directly — it knows WF\'s payload shape. Re-home to a stream.' },
+    { from: 'sukkiri', to: 'cal', pattern: 'document', access: 'stream', state: 'defect', note: 'One shared row, whole-payload upsert from both sides. Last writer wins at row level, not per field.' },
+    { from: 'cal', to: 'sukkiri', pattern: 'document', access: 'view', state: 'proposed', note: 'Sukkiri only ever reads away · overrides · done · block. A view, not a copy — security_invoker on.' },
+    { from: 'sukkiri', to: 'cost', pattern: 'reply', access: 'stream', state: 'live', note: 'Cost writes status in place, never deletes or reorders; Sukkiri reads it back. Paste-JSON fallback across ports.' },
+    { from: 'travel', to: 'cal', pattern: 'stream', access: 'stream', state: 'proposed', note: 'trip.segment → event. Waiting on Travel\'s card.' },
+    { from: 'weather', to: 'cal', pattern: 'stream', access: 'stream', state: 'proposed', note: 'forecast → day. Blocked on an active adapter.' },
+    { from: 'holidays', to: 'cal', pattern: 'stream', access: 'stream', state: 'proposed', note: 'holiday → block.hol, which Calendar already reads. One yearly fetch serves Sukkiri too.' }
+  ];
+  ACCESS = { stream: ['#3b82f6', 'brokered copy'], view: ['#22c55e', 'zero-copy view'], direct: ['#ef4444', 'direct table read — re-home'] };
+
+  // ---- Supabase data layer: seed renders first, live rows replace it when signed in ----
+  sb = null;
+  cfg() { const c = window.AKATSUKI_CONFIG || {}; return c.SUPABASE_URL && c.SUPABASE_ANON_KEY ? c : null; }
+  async initLive() {
+    const c = this.cfg(); if (!c || !window.supabase) return;
+    try {
+      this.sb = window.supabase.createClient(c.SUPABASE_URL, c.SUPABASE_ANON_KEY);
+      const { data: { session } } = await this.sb.auth.getSession();
+      this.setState({ session: session || null, authMsg: '' });
+      this.sb.auth.onAuthStateChange((_e, s) => { this.setState({ session: s || null }); if (s) this.loadLive(); else this.setState({ live: null }); });
+      if (session) await this.loadLive();
+    } catch (e) { this.setState({ authMsg: 'Could not reach Supabase: ' + e.message }); }
+  }
+  async loadLive() {
+    if (!this.sb) return;
+    this.setState({ liveBusy: true });
+    try {
+      const [apps, routes, sources, creds] = await Promise.all([
+        this.sb.from('akatsuki_apps').select('*').order('created_at'),
+        this.sb.from('akatsuki_routes').select('*'),
+        this.sb.from('akatsuki_sources').select('*'),
+        this.sb.from('akatsuki_credentials').select('*')
+      ]);
+      const err = [apps, routes, sources, creds].find(r => r.error); if (err) throw new Error(err.error.message);
+      const pm = (o) => o && typeof o === 'object' ? Object.entries(o).map(([k, v]) => `${k}→${v}`).join(' · ') : '';
+      const live = {
+        apps: apps.data.map(a => ({ id: a.id, name: a.name, role: a.role, pattern: a.pattern, address: a.address_shape || '', clock: a.clock_field || '', clockTrust: a.clock_trust,
+          emits: (a.emits || []).join(', '), accepts: (a.accepts || []).join(', '), deletes: a.deletes, priv: (a.private_fields || []).join(' '), owners: (a.owned_paths || []).length > 0,
+          session: a.session, reach: a.reach || '', payloadMap: pm(a.payload_map), ownedPaths: (a.owned_paths || []).join(' · '), flags: a.flags || [] })),
+        links: routes.data.map(r => ({ from: r.from_app, to: r.to_app, kind: r.kind, access: r.access, state: r.state === 'retired' ? 'proposed' : r.state, note: (r.kind + (r.note ? ' — ' + r.note : '')),
+          pattern: (apps.data.find(a => a.id === r.from_app) || {}).pattern || 'stream' })),
+        sources: sources.data.map(s => ({ id: s.id, name: s.name, kind: s.kind || 'Source', endpoint: s.endpoint, credential: s.credential, fetchPolicy: s.fetch_policy || '—', quota: s.quota || '—', emits: s.emits,
+          consumers: s.consumers || [], cached: s.cache_ttl ? 'akatsuki_cache · ' + s.cache_ttl : 'none · pass to store', secret: s.credential ? 'vault' : 'none needed' })),
+        creds: creds.data.map(c => ({ name: c.name, scope: c.scope || '', where: c.location === 'client_bundle' ? 'client bundle — visible to anyone' : c.location === 'vault' ? 'vault · resolved in the edge function' : 'edge function env',
+          consumers: c.consumers || [], rotated: c.rotated_at ? String(c.rotated_at).slice(0, 10) : 'never', risk: c.location === 'client_bundle' ? 'Ships in every bundle. Safe only while RLS is real on every table it can reach.' : '' }))
+      };
+      this.setState({ live, apps: live.apps, liveBusy: false, authMsg: '' });
+    } catch (e) { this.setState({ liveBusy: false, authMsg: 'Load failed: ' + e.message }); }
+  }
+  async sendLink() {
+    const email = (this.state.authEmail || '').trim(); if (!this.sb || !email) return;
+    const { error } = await this.sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.href.split('#')[0] } });
+    this.setState({ authMsg: error ? error.message : 'Link sent to ' + email + '. Open it in this browser.' });
+  }
+  async saveCard(card) {
+    if (!this.sb || !this.state.session) return false;
+    const split = (s) => String(s || '').split(/[,·]/).map(x => x.trim()).filter(Boolean);
+    const map = Object.fromEntries(split(card.payloadMap).map(p => p.split('→').map(x => x.trim())).filter(p => p.length === 2));
+    const row = { id: card.id, name: card.name, role: card.role || 'app', pattern: card.pattern, address_shape: card.address || null, clock_field: card.clock || null, clock_trust: card.clockTrust || 'unknown',
+      emits: split(card.emits), accepts: split(card.accepts), deletes: card.deletes || null, private_fields: split(card.priv), session: card.session || 'unknown', reach: card.reach || null,
+      payload_map: map, owned_paths: split(card.ownedPaths), flags: card.flags || [] };
+    const { error } = await this.sb.from('akatsuki_apps').upsert(row, { onConflict: 'user_id,id' });
+    if (error) { this.setState({ authMsg: 'Save failed: ' + error.message }); return false; }
+    await this.loadLive(); return true;
+  }
+  REG0 = { id: '', name: '', role: 'app', pattern: 'stream', session: 'jwt', address: '', clock: '', clockTrust: 'trigger', deletes: 'soft', emits: '', accepts: '', priv: '', owners: 'yes', reach: '', payloadMap: '', ownedPaths: '', endpoint: '', credential: '', fetchPolicy: '', quota: '' };
+
+  state = {
+    view: 'channel', viewAs: null, compose: false, flare: false, board: 'weekday',
+    form: { day: 'weekday', time: '21:15', dur: 30, lock: 'soft', note: '' },
+    rules: { 'Weekend shields-up': true, 'Credit emergency': true, 'Streak protection': true, 'Mood override': false },
+    challengers: [
+      { id: 'c1', squad: 'Cleaning', start: 1260, dur: 40, lock: 'no lock', proposed: '22:45', status: 'pending', how: '' },
+      { id: 'c2', squad: 'Cost', start: 1290, dur: 15, lock: 'soft lock', proposed: '22:35', status: 'pending', how: '' },
+      { id: 'c3', squad: 'Sleep', start: 1320, dur: 60, lock: 'soft lock', proposed: '22:40', status: 'pending', how: '' }
+    ],
+    allies: {
+      Cleaning: { posts: 9, resolved: 6, approvals: 7, yielded: 10, days: 12, upvotes: 8, quiet: 0 },
+      Cost:     { posts: 12, resolved: 11, approvals: 13, yielded: 9, days: 15, upvotes: 14, quiet: 1 },
+      Sleep:    { posts: 14, resolved: 13, approvals: 15, yielded: 15, days: 15, upvotes: 15, quiet: 0 },
+      Weather:  { posts: 3, resolved: 1, approvals: 2, yielded: 0, days: 15, upvotes: 1, quiet: 7 },
+      Exercise: { posts: 8, resolved: 4, approvals: 6, yielded: 3, days: 9, upvotes: 5, quiet: 2 }
+    },
+    revoked: { Fashion: true },
+    posts: [
+      { id: 'p1', squad: 'Exercise', kind: 'Request', time: '19:52', text: 'Asks to move Wednesday 07:00 → 06:30, 45 min. Streak protection is on and the streak is 31 days.', request: true, decision: '' },
+      { id: 'p2', squad: 'Reminders', kind: 'Vote', time: '19:40', text: 'Keep weekend shields-up through Sunday? App Gen ✓ · Manager Tasks ✓ · People Tasks ✗', sub: 'Attackers only. Allies read the outcome, not the vote.', attackerOnly: true },
+      { id: 'p3', squad: 'Reminders', kind: 'Claim', time: '19:31', text: 'Claims 08:00 daily, 15 min, soft lock. Morning sweep.' },
+      { id: 'p4', squad: 'Weather', kind: 'Outcome', time: 'Tue', text: 'Yielded Tuesday 12:30 to Food. Standing 20 → 22.' },
+      { id: 'p5', squad: 'Executive', kind: 'Admission', time: 'Mon', text: 'Cleaning admitted by Executive. Marked.' }
+    ]
+  };
+
+  componentDidMount() { this.setState({ viewAs: this.props.viewAs || 'attacker' }); this.initLive(); }
+  componentDidUpdate(prev) { if (prev.viewAs !== this.props.viewAs) this.setState({ viewAs: this.props.viewAs || 'attacker' }); }
+
+  sq(name) { return this.SQUADS.find(s => s.name === name); }
+  isAlly(name) { return !!this.state.allies[name]; }
+  colorOf(name) {
+    const s = this.sq(name); if (!s) return this.ATT;
+    if (s.cls === 'att') return this.ATT;
+    if (this.isAlly(name)) return this.BENT[s.cls];
+    return s.cls === 'mid' ? this.MID : this.DEF;
+  }
+  metaOf(name) { const s = this.sq(name); return this.CLS[s.cls] + (this.isAlly(name) ? ' · marked' : '') + ' · ' + this.TIERS[s.tier]; }
+  standing(a) { return Math.min(90, this.KEYS.reduce((t, [k]) => t + Math.min(15, a[k] || 0), 0)); }
+  fmt(m) { return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); }
+  toMin(t) { const [h, m] = t.split(':').map(Number); return h * 60 + m; }
+  now() { const d = new Date(); return this.fmt(d.getHours() * 60 + d.getMinutes()); }
+  addPost(p, flare) {
+    this.setState(s => ({ posts: [{ id: 'p' + Date.now() + Math.random(), time: this.now(), ...p }, ...s.posts] }));
+    if (flare) this.doFlare();
+  }
+  doFlare() { clearTimeout(this._ft); this.setState({ flare: true }); this._ft = setTimeout(() => this.setState({ flare: false }), 2600); }
+  bumpAlly(name, key, n) {
+    this.setState(s => { const a = s.allies[name]; if (!a) return null; return { allies: { ...s.allies, [name]: { ...a, [key]: (a[key] || 0) + n, quiet: 0 } } }; });
+  }
+  resolve(id, status, how, fn) {
+    this.setState(s => ({ challengers: s.challengers.map(c => c.id === id ? { ...c, status, how } : c) }), () => fn && fn());
+  }
+  // the six questions
+  judge(a) {
+    const OK = '#22c55e', WARN = '#f59e0b', BAD = '#ef4444';
+    const api = a.role === 'api';
+    const sig = a.clockTrust === 'trigger' ? [OK, 'honest DB clock'] : a.clockTrust === 'client' ? [WARN, 'client clock — Akatsuki orders by its own seq and hashes payloads'] : a.clockTrust === 'none' ? [WARN, api ? 'no clock — fetch on policy and cache; normal for a source' : 'no clock — poll and hash; linkable but expensive'] : [BAD, 'not declared'];
+    const reach = !a.reach ? [BAD, 'reach not declared — how it authenticates is not where it can be read from'] :
+      /localStorage authoritative/.test(a.reach) ? [WARN, 'offline-capable with local truth — brokered fields are last-known-good, and two origins have no local path at all'] : [OK, a.reach];
+    const checks = [
+      { k: 'Address', color: a.address ? OK : BAD, hint: a.address ? 'stable, opaque, stored as given' : 'no stable way to name one thing — fix the app first' },
+      { k: 'Signal', color: sig[0], hint: sig[1] },
+      { k: 'Pattern', color: this.PAT[a.pattern] ? OK : BAD, hint: this.PAT[a.pattern] ? this.PAT[a.pattern][0] : 'fits none — the pattern list is incomplete' },
+      { k: 'Mapping', color: a.payloadMap ? OK : BAD, hint: a.payloadMap ? 'its fields map to the kind schema — this is the adapter' : 'no payload map — every link still needs someone to read the source' },
+      { k: 'Owners', color: api ? OK : (a.owners && a.ownedPaths ? OK : BAD), hint: api ? 'read-only source — owns nothing, so nothing to contest' : (a.owners && a.ownedPaths ? 'every shared path has exactly one owner' : 'ownership undeclared — a boolean cannot enforce anything') },
+      { k: 'Reach', color: reach[0], hint: reach[1] }
+    ];
+    if (api) checks.push({ k: 'Secret', color: !a.credential ? OK : /vault|server/.test(a.secret || '') ? OK : BAD, hint: !a.credential ? 'no key required' : /vault|server/.test(a.secret || '') ? 'resolved server-side — one credential, many consumers' : 'key would ship in a client bundle' });
+    const bad = checks.some(c => c.color === BAD), warn = checks.some(c => c.color === WARN);
+    const verdict = bad ? 'not ready' : warn ? 'linkable · with cost' : 'linkable';
+    const color = bad ? BAD : warn ? WARN : OK;
+    return { checks, verdict, color };
+  }
+
+  renderVals() {
+    const S = this.state, viewAs = S.viewAs || this.props.viewAs || 'attacker';
+    const isAttacker = viewAs === 'attacker';
+    const viewerName = isAttacker ? 'Executive' : 'Cleaning';
+    const viewerColor = this.colorOf(viewerName);
+    const nav = this.props.nav || 'rail';
+    const strength = this.props.atmosphere || 'strong';
+    const moonOn = (this.props.moon || 'rising') !== 'hidden';
+    const live = S.challengers.some(c => c.status === 'pending');
+    const pendingCount = S.challengers.filter(c => c.status === 'pending').length;
+
+    // atmosphere — attackers are the source; enters from all four edges
+    const hot = live || S.flare;
+    const layers = [];
+    if (strength !== 'off') {
+      const a = (strength === 'strong' ? 0.26 : 0.12) * (hot ? 1.7 : 1);
+      const col = hot ? '239,68,68' : '220,38,38';
+      const g = (dir) => `linear-gradient(${dir}, rgba(${col},${a}) 0%, rgba(${col},0) 26%)`;
+      layers.push(React.createElement('div', { key: 'edges', 'aria-hidden': true,
+        style: { position: 'fixed', inset: 0, pointerEvents: 'none',
+          background: [g('to bottom'), g('to top'), g('to right'), g('to left')].join(','),
+          animation: hot ? 'aka-flare 1.4s ease-in-out infinite' : 'aka-breathe 7s ease-in-out infinite',
+          transition: 'background 1.2s ease' } }));
+    }
+    if (moonOn) {
+      const size = 'clamp(260px, 38vw, 520px)';
+      const core = hot ? '#ef4444' : '#dc2626';
+      const rim = hot ? '#7f1d1d' : '#450a0a';
+      layers.push(React.createElement('div', { key: 'moonwrap', 'aria-hidden': true,
+        style: { position: 'fixed', top: '-8vh', right: '-6vw', width: size, height: size, pointerEvents: 'none', animation: 'aka-drift 40s ease-in-out infinite' } },
+        React.createElement('div', { style: { position: 'absolute', inset: 0, borderRadius: '50%',
+          background: `radial-gradient(circle at 38% 34%, ${core} 0%, #b91c1c 38%, ${rim} 72%, rgba(69,10,10,.9) 100%),
+            radial-gradient(circle at 66% 62%, rgba(0,0,0,.35) 0 9%, transparent 10%),
+            radial-gradient(circle at 30% 70%, rgba(0,0,0,.28) 0 6%, transparent 7%),
+            radial-gradient(circle at 72% 30%, rgba(0,0,0,.22) 0 4%, transparent 5%)`,
+          backgroundBlendMode: 'normal, multiply, multiply, multiply',
+          boxShadow: hot
+            ? '0 0 90px 30px rgba(239,68,68,.55), 0 0 240px 90px rgba(239,68,68,.28), inset -30px -30px 80px rgba(0,0,0,.55)'
+            : '0 0 70px 20px rgba(220,38,38,.38), 0 0 200px 70px rgba(185,28,28,.18), inset -30px -30px 80px rgba(0,0,0,.6)',
+          animation: (hot ? 'aka-rage 1.4s ease-in-out infinite' : 'aka-halo 6s ease-in-out infinite') + ', aka-rise 2.4s cubic-bezier(.2,.7,.2,1) both',
+          transition: 'box-shadow 1.2s ease, background 1.2s ease', opacity: .92 } })));
+      layers.push(React.createElement('div', { key: 'wash', 'aria-hidden': true,
+        style: { position: 'fixed', inset: 0, pointerEvents: 'none',
+          background: 'radial-gradient(ellipse at 85% 10%, rgba(239,68,68,' + (hot ? .22 : .12) + ') 0%, transparent 55%)', transition: 'background 1.2s ease' } }));
+    }
+    const atmosphere = layers.length ? React.createElement('div', { style: { position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none', overflow: 'hidden' } }, layers) : null;
+
+    const challengers = S.challengers.map(c => {
+      const pending = c.status === 'pending';
+      const statusMap = { pending: ['Unresolved', this.LIVE], won: ['Executive holds. ' + c.how, this.ATT], moved: [c.how, '#8888aa'], yielded: [c.how, this.colorOf(c.squad)], escalated: [c.how, '#8888aa'] };
+      const [status, statusColor] = statusMap[c.status];
+      const sqd = this.sq(c.squad);
+      const canYield = isAttacker || c.squad === viewerName;
+      return {
+        name: c.squad, color: this.colorOf(c.squad), meta: this.CLS[sqd.cls] + ' · ' + this.TIERS[sqd.tier].replace('Tier ', 'T'),
+        range: this.fmt(c.start) + ' – ' + this.fmt(c.start + c.dur), lock: c.lock, proposed: c.proposed,
+        pending, status, statusColor, canYield,
+        border: pending ? 'rgba(239,68,68,.45)' : 'var(--border-color)', opacity: pending ? 1 : 0.7,
+        win: () => this.resolve(c.id, 'won', 'Tier 4 over ' + this.TIERS[sqd.tier].replace('Tier ', 'tier '), () => {
+          this.bumpAlly(c.squad, 'resolved', 1);
+          this.addPost({ squad: 'Executive', kind: 'Outcome', text: `Priority ruled. Executive keeps 20:00–22:30; ${c.squad} ${this.fmt(c.start)} drops for tonight.` }, true);
+        }),
+        move: () => this.resolve(c.id, 'moved', 'Moved to ' + c.proposed + ', after the lock', () => {
+          this.bumpAlly(c.squad, 'resolved', 1);
+          this.addPost({ squad: c.squad, kind: 'Outcome', text: `Took the proposed slot. ${this.fmt(c.start)} → ${c.proposed}, first clear minute after Executive's lock.` });
+        }),
+        yield: () => {
+          const before = this.standing(S.allies[c.squad] || {});
+          this.resolve(c.id, 'yielded', c.squad + ' yielded. Standing deepened.', () => {
+            this.bumpAlly(c.squad, 'yielded', 3); this.bumpAlly(c.squad, 'resolved', 1);
+            const after = this.standing(this.state.allies[c.squad] || {});
+            this.addPost({ squad: c.squad, kind: 'Outcome', text: `Yielded ${this.fmt(c.start)} to Executive. Standing ${before} → ${after}.` });
+          });
+        },
+        escalate: () => this.resolve(c.id, 'escalated', 'Handed to App Gen to rule', () => {
+          this.addPost({ squad: c.squad, kind: 'Escalation', text: `Escalated the ${this.fmt(c.start)} clash with Executive to App Gen.`, sub: 'An attacker rules; the outcome posts here.' });
+        })
+      };
+    });
+
+    const KIND_COLOR = { Claim: '#8888aa', Request: '#3b82f6', Vote: this.ATT, Outcome: '#22c55e', Admission: this.ATT, Escalation: '#f59e0b', Nudge: this.ATT, Revocation: '#8888aa', Registration: '#8b5cf6' };
+    const posts = S.posts.filter(p => isAttacker || !p.attackerOnly).map(p => ({
+      ...p, color: this.colorOf(p.squad), meta: this.metaOf(p.squad).split(' · ').slice(0, 2).join(' · '),
+      kindColor: KIND_COLOR[p.kind] || '#8888aa',
+      sub: p.decision ? (p.decision === 'approved' ? 'Approved by Executive.' : 'Rejected by Executive.') : p.sub,
+      showApprove: !!p.request && !p.decision && isAttacker,
+      showWaiting: !!p.request && !p.decision && !isAttacker,
+      approve: () => { this.setState(s => ({ posts: s.posts.map(x => x.id === p.id ? { ...x, decision: 'approved' } : x) })); this.bumpAlly(p.squad, 'approvals', 1); this.doFlare(); },
+      reject: () => this.setState(s => ({ posts: s.posts.map(x => x.id === p.id ? { ...x, decision: 'rejected' } : x) }))
+    }));
+
+    // boards
+    const weekday = [
+      { name: 'Exercise', start: 420, dur: 45, kind: 'int' }, { name: 'Reminders', start: 480, dur: 15, kind: 'int' }, { name: 'Food', start: 750, dur: 30, kind: 'int' },
+      { name: 'Executive', start: 1200, dur: 150, kind: 'hard' },
+      ...S.challengers.map(c => ({ name: c.squad, start: c.status === 'moved' ? this.toMin(c.proposed) : c.start, dur: c.dur, kind: 'int', clash: c.status === 'pending', gone: c.status === 'won' }))
+    ].filter(b => !b.gone);
+    const weekend = [
+      { name: 'Food', start: 540, dur: 60, kind: 'int' }, { name: 'Cleaning', start: 660, dur: 90, kind: 'int' }, { name: 'Exercise', start: 1020, dur: 60, kind: 'int' }, { name: 'Sleep', start: 1350, dur: 90, kind: 'hard' }
+    ];
+    const isWeekday = S.board === 'weekday';
+    const items = (isWeekday ? weekday : weekend).slice().sort((a, b) => a.start - b.start);
+    const blocks = items.map(b => {
+      const hard = b.kind === 'hard';
+      return {
+        name: b.name, range: this.fmt(b.start) + '–' + this.fmt(b.start + b.dur), left: ((b.start - 360) / 1080 * 100).toFixed(2), width: (b.dur / 1080 * 100).toFixed(2),
+        bg: b.clash ? 'rgba(239,68,68,.22)' : hard ? 'rgba(249,115,22,.30)' : 'var(--bg-elevated)',
+        border: b.clash ? 'rgba(239,68,68,.6)' : hard ? 'rgba(249,115,22,.5)' : 'var(--border-color)',
+        glow: b.clash ? '0 4px 15px rgba(239,68,68,.3)' : hard ? '0 4px 15px rgba(249,115,22,.25)' : 'none',
+        color: this.colorOf(b.name)
+      };
+    });
+    const boardList = items.map(b => {
+      const s = this.sq(b.name); const hard = b.kind === 'hard';
+      return { name: b.name, color: this.colorOf(b.name), range: this.fmt(b.start) + ' – ' + this.fmt(b.start + b.dur),
+        meta: this.CLS[s.cls] + ' · ' + this.TIERS[s.tier] + (hard ? ' · hard lock' : ''),
+        note: b.clash ? 'Inside Executive\'s hard lock. Unresolved.' : hard ? 'Blocks everything under it.' : 'Clear.',
+        noteColor: b.clash ? this.LIVE : hard ? '#fdba74' : '#22c55e', border: b.clash ? 'rgba(239,68,68,.45)' : 'var(--border-color)' };
+    });
+    const todayItems = weekday.slice().sort((a, b) => a.start - b.start).map(b => ({
+      start: this.fmt(b.start), name: b.name, color: this.colorOf(b.name),
+      tag: b.clash ? 'clash' : b.kind === 'hard' ? 'hard lock' : '', tagColor: b.clash ? this.LIVE : '#fdba74'
+    }));
+
+    // standing
+    const attackers = this.SQUADS.filter(s => s.cls === 'att');
+    const allies = Object.keys(S.allies).map(name => {
+      const a = S.allies[name], st = this.standing(a), s = this.sq(name), decaying = a.quiet >= 5;
+      const isMe = name === viewerName;
+      return { name, color: this.colorOf(name), classColor: s.cls === 'mid' ? this.MID : this.DEF,
+        meta: this.CLS[s.cls] + ' · ' + this.TIERS[s.tier], standing: st, pct: st,
+        capNote: st >= 88 ? 'at the ceiling — never attacker' : '/ 90',
+        warn: decaying ? `Quiet ${a.quiet} days. Decays tomorrow.` : a.quiet >= 3 ? `Quiet ${a.quiet} days.` : (isMe ? 'This is you.' : ''),
+        warnColor: decaying ? '#f59e0b' : isMe ? this.colorOf(name) : 'var(--text-muted)',
+        border: isMe ? 'rgba(249,115,22,.45)' : decaying ? 'rgba(245,158,11,.4)' : 'var(--border-color)',
+        decaying, inputs: this.KEYS.map(([k, label]) => ({ k: label, v: Math.min(15, a[k] || 0) })),
+        upvote: () => { this.bumpAlly(name, 'upvotes', 1); this.doFlare(); },
+        nudge: () => { this.setState(s2 => ({ allies: { ...s2.allies, [name]: { ...s2.allies[name], quiet: 0 } } })); this.addPost({ squad: 'Executive', kind: 'Nudge', text: `Nudged ${name}. Post something or the mark fades.` }, true); },
+        revoke: () => { this.setState(s2 => { const n = { ...s2.allies }; delete n[name]; return { allies: n, revoked: { ...s2.revoked, [name]: true } }; }); this.addPost({ squad: 'Executive', kind: 'Revocation', text: `${name} revoked. A faint mark stays — you can see they were once in.` }, true); }
+      };
+    });
+    const outsiders = this.SQUADS.filter(s => s.cls !== 'att' && !S.allies[s.name]).map(s => {
+      const once = !!S.revoked[s.name];
+      return { name: s.name, color: once ? 'color-mix(in oklch, ' + (s.cls === 'mid' ? this.MID : this.DEF) + ' 88%, #f97316 12%)' : (s.cls === 'mid' ? this.MID : this.DEF),
+        note: once ? this.CLS[s.cls] + ' · once in · faint 8' : this.CLS[s.cls] + ' · no read', noteColor: once ? '#fdba74' : 'var(--text-muted)',
+        admit: () => { this.setState(s2 => { const r = { ...s2.revoked }; delete r[s.name]; return { allies: { ...s2.allies, [s.name]: { posts: 0, resolved: 0, approvals: 0, yielded: 0, days: 0, upvotes: 0, quiet: 0 } }, revoked: r }; }); this.addPost({ squad: 'Executive', kind: 'Admission', text: `${s.name} admitted by Executive. Marked.` }, true); }
+      };
+    });
+
+    // compose preview
+    const f = S.form, fStart = this.toMin(f.time), fEnd = fStart + Number(f.dur || 0);
+    const overlapsLock = f.day === 'weekday' && viewerName !== 'Executive' && fStart < 1350 && fEnd > 1200;
+    const shielded = f.day === 'weekend' && S.rules['Weekend shields-up'] && this.sq(viewerName).tier === 2;
+    const previewText = shielded ? 'Weekend shields-up hides Work/Growth claims on this board.' : overlapsLock ? `Clash: ${f.time} sits inside Executive's hard lock 20:00–22:30.` : 'No clash on this board.';
+    const submitClaim = () => {
+      if (!f.time) return;
+      const lockLabel = f.lock === 'none' ? 'no lock' : f.lock + ' lock';
+      if (overlapsLock) {
+        const proposed = this.fmt(1350 + 5 + 5 * S.challengers.length);
+        this.setState(s => ({ challengers: [...s.challengers, { id: 'c' + Date.now(), squad: viewerName, start: fStart, dur: Number(f.dur || 30), lock: lockLabel, proposed, status: 'pending', how: '' }] }));
+      }
+      this.bumpAlly(viewerName, 'posts', 1);
+      this.addPost({ squad: viewerName, kind: 'Claim', text: `Claims ${f.day} ${f.time}, ${f.dur} min, ${lockLabel}.${f.note ? ' ' + f.note : ''}`, sub: overlapsLock ? 'Auto-detected: inside Executive\'s hard lock. Added to the clash above.' : '' }, isAttacker);
+      this.setState({ compose: false, view: 'channel', form: { ...f, note: '' } });
+    };
+    const setF = (k) => (e) => this.setState(s => ({ form: { ...s.form, [k]: e.target.value } }));
+
+    // hub
+    const isHub = S.view === 'hub';
+    const apps = S.apps || this.HUB_APPS;
+    const reg = S.reg || this.REG0;
+    const MONO = 'ui-monospace, Menlo, monospace';
+    const patOf = (p) => { const [label, col] = this.PAT[p] || ['Unknown', '#8888aa']; return { patLabel: label, patColor: col, patBg: `color-mix(in oklch, ${col} 14%, transparent)`, patBorder: `color-mix(in oklch, ${col} 40%, transparent)` }; };
+    const hubApps = apps.map(a => {
+      const j = this.judge(a);
+      return { id: a.id, name: a.name, ...patOf(a.pattern), checks: j.checks,
+        verdict: j.verdict, verdictBg: `linear-gradient(135deg, ${j.color}, color-mix(in oklch, ${j.color} 80%, black))`, verdictGlow: `color-mix(in oklch, ${j.color} 40%, transparent)`,
+        border: j.color === '#ef4444' ? 'rgba(239,68,68,.45)' : 'var(--border-color)', glow: j.color === '#ef4444' ? '0 4px 15px rgba(239,68,68,.15)' : 'none',
+        lines: [
+          ['Address', a.address || 'not declared', MONO, !a.address],
+          ['Clock', a.clock || 'not declared', MONO, !a.clock],
+          ['Trust', this.TRUST[a.clockTrust] || a.clockTrust, 'inherit', a.clockTrust === 'unknown'],
+          ['Emits', a.emits || '—', MONO], ['Accepts', a.accepts || '—', MONO],
+          ['Mapping', a.payloadMap || 'not declared', MONO, !a.payloadMap],
+          ['Owns', a.ownedPaths || 'not declared', MONO, !a.ownedPaths],
+          ['Deletes', this.DELETES[a.deletes] || a.deletes],
+          ['Private', a.priv || '—', MONO],
+          ['Session', this.SESSION[a.session] || a.session, 'inherit', a.session === 'unknown'],
+          ['Reach', a.reach || 'not declared', 'inherit', !a.reach]
+        ].map(([k, v, font, missing]) => ({ k, v, font: font || 'inherit', size: font === MONO ? '.8rem' : '.85rem', color: missing ? '#f87171' : 'var(--text-primary)' })),
+        flags: (a.flags || []).map(text => ({ text })), hasFlags: (a.flags || []).length > 0 };
+    });
+    const STATE = { live: ['Live', '#22c55e', 'none'], half: ['Half-wired', '#f59e0b', 'none'], defect: ['Live · defect', this.LIVE, 'aka-dot 1.4s ease-out infinite'], proposed: ['Proposed', '#8888aa', 'none'] };
+    const nameOf = (id) => (apps.find(a => a.id === id) || ((S.live && S.live.sources) || this.HUB_SOURCES).find(s => s.id === id) || this.SQUADS.find(s => s.name.toLowerCase() === id) || { name: id }).name;
+    const liveData = S.live || null;
+    const linkRows = liveData ? liveData.links : this.HUB_LINKS;
+    const hubLinks = linkRows.map(l => {
+      const [stateLabel, stateColor, stateAnim] = STATE[l.state] || STATE.proposed;
+      const [accessColor, accessHint] = this.ACCESS[l.access || 'stream'] || this.ACCESS.stream;
+      return { from: nameOf(l.from), to: nameOf(l.to), arrow: l.pattern === 'document' ? '⇄' : l.pattern === 'reply' ? '⇆' : '→', ...patOf(l.pattern), stateLabel, stateColor, stateAnim, note: l.note,
+        access: l.access || 'stream', accessColor, accessBorder: `color-mix(in oklch, ${accessColor} 45%, transparent)`, accessHint,
+        border: l.state === 'defect' ? 'rgba(239,68,68,.45)' : 'var(--border-color)' };
+    });
+    const chip = (v, extra) => ({ v, color: 'var(--text-primary)', border: 'var(--border-color)', swatch: null, ...extra });
+    const hubVocab = [
+      { name: 'Contexts', count: '7 ids', font: MONO, items: ['@train', '@home', '@office', '@needs-claude-code', '@claude-chat-only', '@phone-only', '@deep-work'].map(v => chip(v)), flag: 'Lives in roadmap_contexts_map today and is read by no code — wfConfig.ts carries a duplicate. First table Akatsuki takes over.' },
+      { name: 'Kinds', count: '8 payload schemas', font: MONO, items: ['task.upsert', 'note', 'trip.segment', 'forecast', 'trash.pickup', 'purchase_request', 'holiday', 'ledger.row'].map(v => chip(v)), flag: null },
+      { name: 'Icons', count: '10 glyph ids', font: MONO, items: ['flame', 'recycle', 'bottle', 'can', 'paper', 'trash', 'leaf', 'box', 'battery', 'glass'].map(v => chip(v)), flag: 'Drift already: one contract says 10 icons, the other says 11 and lists 10. wm is true in one and 1 in the other.' },
+      { name: 'Palette', count: '7 colours', font: 'inherit', items: ['#c0392b', '#e67e22', '#2980b9', '#27ae60', '#8e44ad', '#16a085', '#7f8c8d'].map(v => chip(v, { swatch: v, color: 'var(--text-secondary)' })), flag: null }
+    ];
+    // API sources — one fetch and one credential, many consumers
+    const srcRows = liveData ? liveData.sources : this.HUB_SOURCES;
+    const credRows = liveData ? liveData.creds : this.HUB_CREDS;
+    const hubSources = srcRows.map(s => {
+      const j = this.judge({ ...s, role: 'api', pattern: 'stream', address: 'source-defined', payloadMap: s.emits, reach: 'server-side adapter · no client path', clockTrust: 'none', owners: true, ownedPaths: 'read-only' });
+      return { id: s.id, name: s.name, kind: s.kind, endpoint: s.endpoint, emits: s.emits, fetchPolicy: s.fetchPolicy, quota: s.quota, cached: s.cached,
+        credential: s.credential || 'none required', credColor: s.credential ? '#fdba74' : 'var(--text-secondary)',
+        verdict: j.verdict, verdictBg: `linear-gradient(135deg, ${j.color}, color-mix(in oklch, ${j.color} 80%, black))`, verdictGlow: `color-mix(in oklch, ${j.color} 40%, transparent)`,
+        shared: s.consumers.length > 1, sharedNote: s.consumers.length > 1 ? `${s.consumers.length} consumers · still one call` : 'single consumer',
+        consumers: s.consumers.map(c => ({ name: nameOf(c) })) };
+    });
+    const hubCreds = credRows.map(c => ({ name: c.name, scope: c.scope, where: c.where, rotated: c.rotated,
+      whereColor: /bundle/.test(c.where) ? '#f87171' : '#22c55e', border: /bundle/.test(c.where) ? 'rgba(245,158,11,.4)' : 'var(--border-color)',
+      count: c.consumers.length + (c.consumers.length === 1 ? ' consumer' : ' consumers'),
+      consumers: c.consumers.map(x => ({ name: nameOf(x) })), risk: c.risk || '' }));
+
+    const regJ = this.judge({ ...reg, owners: reg.owners === 'yes', secret: 'vault', clockTrust: reg.role === 'api' ? 'none' : reg.clockTrust, clock: reg.role === 'api' ? (reg.clock || 'none · fetch on policy') : reg.clock, reach: reg.role === 'api' ? (reg.reach || 'server-side adapter · no client path') : reg.reach });
+    const regVerdictText = !reg.id || !reg.name ? 'Give the app an id and a name.' : regJ.verdict === 'not ready' ? 'Not ready: ' + regJ.checks.filter(c => c.color === '#ef4444').map(c => c.k.toLowerCase()).join(', ') + ' missing.' : regJ.verdict === 'linkable' ? 'Passes all four. Linkable to anything.' : 'Linkable, with cost: ' + regJ.checks.find(c => c.color === '#f59e0b').hint + '.';
+    const setReg = Object.fromEntries(Object.keys(this.REG0).map(k => [k, (e) => this.setState(s => ({ reg: { ...(s.reg || this.REG0), [k]: e.target.value } }))]));
+    const submitReg = () => {
+      if (!reg.id || !reg.name) return;
+      const card = { ...reg, id: reg.id.trim().toLowerCase(), owners: reg.owners === 'yes', flags: regJ.verdict === 'not ready' ? ['card incomplete — ' + regJ.checks.filter(c => c.color === '#ef4444').map(c => c.k.toLowerCase()).join(', ') + ' not declared'] : [] };
+      this.setState(s => ({ apps: [...(s.apps || this.HUB_APPS).filter(a => a.id !== card.id), card], reg: this.REG0, compose: false }));
+      this.saveCard(card);
+      this.addPost({ squad: 'Executive', kind: 'Registration', text: `${card.name} filed a card. Judged ${regJ.verdict}.`, sub: regJ.verdict === 'linkable' ? 'Passes all four questions.' : regJ.checks.filter(c => c.color !== '#22c55e').map(c => c.k + ': ' + c.hint).join(' · ') }, regJ.verdict !== 'linkable');
+    };
+    const verdicts = hubApps.map(h => h.verdict);
+
+    return {
+      isHub, goHub: () => this.setState({ view: 'hub' }),
+      composeClaim: S.compose && !isHub, composeHub: S.compose && isHub,
+      hubApps, hubLinks, hubVocab, hubSources, hubCreds, regIsApi: reg.role === 'api',
+      reg, setReg, submitReg, regVerdictText, regVerdictColor: !reg.id || !reg.name ? 'var(--text-muted)' : regJ.color,
+      hubRegistered: apps.length, hubLinkable: verdicts.filter(v => v === 'linkable').length, hubCost: verdicts.filter(v => v === 'linkable · with cost').length, hubNotReady: verdicts.filter(v => v === 'not ready').length,
+      hubLive: linkRows.filter(l => l.state === 'live' || l.state === 'defect').length, hubSourceCount: srcRows.length,
+      liveLabel: !this.cfg() ? 'Seed' : S.session ? (S.liveBusy ? 'Live · loading' : 'Live') : 'Configured · signed out',
+      liveColor: !this.cfg() ? '#8888aa' : S.session ? '#22c55e' : '#f59e0b',
+      liveBorder: !this.cfg() ? 'var(--border-color)' : S.session ? 'rgba(34,197,94,.35)' : 'rgba(245,158,11,.4)',
+      liveNote: S.authMsg || (!this.cfg() ? 'Showing the seeded ecosystem. Fill js/config.js with your Supabase URL and anon key to go live.' : S.session ? `Reading akatsuki_* as ${S.session.user.email}. Cards you file are written to akatsuki_apps.` : 'Sign in with the same account your other apps use — RLS shows nothing otherwise.'),
+      showSignIn: !!this.cfg() && !S.session, showSignOut: !!this.cfg() && !!S.session,
+      authEmail: S.authEmail || '', setAuthEmail: (e) => this.setState({ authEmail: e.target.value }),
+      sendLink: () => this.sendLink(), signOut: () => this.sb && this.sb.auth.signOut(), reloadLive: () => this.loadLive(),
+      atmosphere, navRail: nav === 'rail', navBar: nav === 'bar',
+      isChannel: S.view === 'channel', isBoard: S.view === 'board', isStanding: S.view === 'standing',
+      goChannel: () => this.setState({ view: 'channel' }), goBoard: () => this.setState({ view: 'board' }), goStanding: () => this.setState({ view: 'standing' }),
+      viewAs, viewerName, viewerColor, isAttacker,
+      viewerNote: isAttacker ? 'Attacker. You hold the channel.' : 'Defender, admitted and marked. Standing ' + this.standing(S.allies.Cleaning || {}) + ' / 90.',
+      viewerOptions: [{ value: 'attacker', label: 'Executive' }, { value: 'ally', label: 'Cleaning' }],
+      setViewAs: (v) => this.setState({ viewAs: v }),
+      pageTitle: S.view === 'channel' ? 'Before the day locks' : S.view === 'board' ? 'The board' : S.view === 'hub' ? 'The hub' : 'Standing',
+      pageSub: S.view === 'channel' ? 'Every squad posts its claims here, where the conflict can be seen — not resolved silently inside the clash resolver.'
+        : S.view === 'board' ? 'One base squad owns the day. Timed interrupts block it. Weekday and weekend boards are separate.'
+        : S.view === 'hub' ? 'Every app files a card. Akatsuki judges it before anyone writes an adapter — edges flexible, core rigid. Apps talk to the hub, never to each other.'
+        : 'Attackers are the source. Allies carry a mark for being let in; it deepens with use and fades when quiet.',
+      dayStatus: live ? `Locks at 23:00 · ${pendingCount} unresolved ${pendingCount === 1 ? 'clash' : 'clashes'}` : 'Locks at 23:00 · the day is clear',
+      dayDotColor: live ? this.LIVE : '#22c55e', dayDotAnim: live ? 'aka-dot 1.4s ease-out infinite' : 'none',
+      compose: S.compose, composeLabel: S.compose ? 'Close' : isHub ? 'File a card' : 'Post a claim', toggleCompose: () => this.setState(s => ({ compose: !s.compose })),
+      form: f, setDay: setF('day'), setTime: setF('time'), setDur: setF('dur'), setLock: setF('lock'), setNote: setF('note'),
+      previewText, previewColor: shielded ? '#f59e0b' : overlapsLock ? this.LIVE : '#22c55e', submitClaim,
+      clashLabel: live ? 'Clash · live' : 'Clash · settled', clashLabelColor: live ? this.LIVE : '#22c55e',
+      clashBorder: live ? 'rgba(239,68,68,.6)' : 'var(--border-color)', clashGlow: live ? '0 8px 30px rgba(239,68,68,.18)' : 'none',
+      clashAnim: live ? 'aka-ember 2.2s ease-in-out infinite' : 'none', clashBg: live ? 'linear-gradient(135deg, rgba(239,68,68,.08), rgba(26,26,37,0) 45%)' : 'none',
+      clashLabelBg: live ? 'linear-gradient(135deg, #ef4444, #dc2626)' : 'linear-gradient(135deg, #22c55e, #16a34a)', clashLabelGlow: live ? 'rgba(239,68,68,.4)' : 'rgba(34,197,94,.3)',
+      clashCount: live ? `${pendingCount} of ${S.challengers.length} still inside the lock` : 'All inside the lock, none of them wrong. All settled.',
+      challengers, posts, feedEmpty: posts.length === 0,
+      todayItems, rules: Object.keys(S.rules).map(name => ({ name, on: S.rules[name], toggle: () => this.setState(s => ({ rules: { ...s.rules, [name]: !s.rules[name] } })) })),
+      allyCount: Object.keys(S.allies).length, outsideCount: 12 - Object.keys(S.allies).length,
+      board: S.board, setBoard: (v) => this.setState({ board: v }), boardOptions: [{ value: 'weekday', label: 'Weekday' }, { value: 'weekend', label: 'Weekend' }],
+      boardNote: isWeekday ? '06:00 – 24:00 · Executive out of the house 20:00–22:30' : '06:00 – 24:00 · shields-up: Work/Growth claims hidden',
+      baseName: isWeekday ? 'Manager Tasks' : 'Psychology', baseNote: isWeekday ? 'owns the weekday. Interrupts block it.' : 'owns the weekend. Shields-up.',
+      ticks: [6, 9, 12, 15, 18, 21, 24].map(h => ({ label: String(h).padStart(2, '0'), left: ((h - 6) / 18 * 100).toFixed(2) })),
+      blocks, boardList,
+      attackers, allies, outsiders
+    };
+  }
+}
+</script>
+</body>
+</html>

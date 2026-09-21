@@ -1,0 +1,57 @@
+/* ============================================================
+   Scriptura — Typography tokens
+   One UI family (Outfit) used across the whole product, plus a
+   dedicated script font per writing system. Display headings
+   lean on a tri-color gradient clip; everything else is solid.
+   ============================================================ */
+
+:root {
+  /* --- Families --- */
+  --font-ui: 'Outfit', system-ui, -apple-system, sans-serif;
+
+  /* Script families — applied to native characters only */
+  --font-burmese:    'Noto Sans Myanmar', sans-serif;
+  --font-devanagari: 'Noto Sans Devanagari', sans-serif;
+  --font-telugu:     'Noto Sans Telugu', sans-serif;
+  --font-sinhala:    'Noto Sans Sinhala', sans-serif;
+  --font-tamil:      'Noto Sans Tamil', sans-serif;
+  --font-japanese:   'Noto Sans JP', sans-serif;
+  --font-korean:     'Noto Sans KR', sans-serif;
+  --font-chinese:    'Noto Sans SC', sans-serif;
+
+  /* --- Weights --- */
+  --fw-light:    300; /* @kind font */
+  --fw-regular:  400; /* @kind font */
+  --fw-medium:   500; /* @kind font */
+  --fw-semibold: 600; /* @kind font */
+  --fw-bold:     700; /* @kind font */
+
+  /* --- UI type scale (rem) --- */
+  --fs-hint:    0.75rem;  /* answer labels, captions */
+  --fs-micro:   0.8rem;   /* tab sub-labels, pills */
+  --fs-small:   0.85rem;  /* section labels, settings */
+  --fs-body:    0.95rem;  /* default UI text, buttons */
+  --fs-base:    1rem;     /* roman readings, subtitle base */
+  --fs-lg:      1.2rem;   /* card names, start button */
+  --fs-title:   1.5rem;   /* page title */
+  --fs-h2:      1.8rem;   /* review stat values */
+  --fs-display: 2.8rem;   /* homepage gradient headline */
+
+  /* --- Glyph scale (the practiced characters themselves) --- */
+  --glyph-tab:    1.4rem; /* tab icon glyph */
+  --glyph-prompt: 4.5rem; /* quiz prompt char */
+  --glyph-answer: 5rem;   /* revealed answer char */
+  --glyph-main:   7rem;   /* primary practice character */
+
+  /* --- Letter-spacing --- */
+  --tracking-label: 1.5px; /* @kind spacing */
+  --tracking-tight: 1px;   /* @kind spacing */
+
+  /* --- Line height --- */
+  --lh-tight: 1;   /* @kind other */
+  --lh-snug:  1.2; /* @kind other */
+  --lh-body:  1.5; /* @kind other */
+
+  /* --- Signature gradient (display headlines) --- */
+  --gradient-display: linear-gradient(135deg, #22c55e, #3b82f6, #8b5cf6); /* @kind color */
+}

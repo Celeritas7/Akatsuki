@@ -1,0 +1,66 @@
+/* ============================================================
+   Scriptura — Color tokens
+   A deep near-black canvas with elevation tiers, plus a set of
+   vivid accent hues that each map to one functional mode of the
+   product (practice = green, quiz = blue, etc).
+   ============================================================ */
+
+:root {
+  /* --- Surfaces (dark, elevation increases with number) --- */
+  --bg-primary:    #0a0a0f;  /* app background, deepest */
+  --bg-secondary:  #12121a;  /* inset panels, tab rails */
+  --bg-card:       #1a1a25;  /* default card surface */
+  --bg-elevated:   #222230;  /* hover / raised surface */
+
+  /* --- Text --- */
+  --text-primary:   #f0f0f5; /* headings, body on dark */
+  --text-secondary: #8888aa; /* labels, supporting copy */
+  --text-muted:     #555566; /* hints, disabled */
+  --text-on-accent: #ffffff; /* text sitting on an accent fill */
+
+  /* --- Borders --- */
+  --border-color:  #2a2a3a;  /* hairline on cards & rails */
+
+  /* --- Accent: script families --- */
+  --accent-indic:  #f59e0b;  /* amber — Indic scripts */
+  --accent-indic-deep: #d97706;
+  --accent-cjk:    #ec4899;  /* pink — CJK scripts */
+  --accent-cjk-deep:   #db2777;
+
+  /* --- Accent: practice modes --- */
+  --accent-practice: #22c55e; /* green */
+  --accent-practice-deep: #16a34a;
+  --accent-quiz:     #3b82f6; /* blue */
+  --accent-quiz-deep:    #2563eb;
+  --accent-sheet:    #8b5cf6; /* violet */
+  --accent-sheet-deep:   #7c3aed;
+  --accent-review:   #f97316; /* orange */
+  --accent-review-deep:  #ea580c;
+
+  /* --- Semantic status --- */
+  --success: #22c55e;
+  --error:   #ef4444;
+  --error-deep: #dc2626;
+
+  /* --- Canvas / worksheet (light surfaces inside dark UI) --- */
+  --canvas-bg:       #fefefe; /* drawing surface */
+  --cell-empty:      #fefefe; /* worksheet cell, not rated */
+  --cell-complete:   #86efac; /* worksheet cell, correct */
+  --cell-incorrect:  #fca5a5; /* worksheet cell, needs work */
+
+  /* --- Mastery scale (review heatmap) --- */
+  --mastery-strong:   rgba(34, 197, 94, 0.25);
+  --mastery-good:     rgba(59, 130, 246, 0.20);
+  --mastery-medium:   rgba(245, 158, 11, 0.20);
+  --mastery-weak:     rgba(249, 115, 22, 0.20);
+  --mastery-very-weak:rgba(239, 68, 68, 0.20);
+
+  /* --- Semantic aliases (prefer these in components) --- */
+  --surface-app:     var(--bg-primary);
+  --surface-rail:    var(--bg-secondary);
+  --surface-card:    var(--bg-card);
+  --surface-hover:   var(--bg-elevated);
+  --text-body:       var(--text-primary);
+  --text-label:      var(--text-secondary);
+  --hairline:        var(--border-color);
+}

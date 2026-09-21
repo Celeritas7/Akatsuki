@@ -1,0 +1,9 @@
+/* ============================================================
+   Scriptura — Webfonts
+   UI type: Outfit (geometric humanist sans)
+   Script type: Noto Sans family, one per writing system
+   All loaded from Google Fonts (these ARE the real fonts the
+   product uses — no substitution).
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Noto+Sans+Myanmar:wght@400;700&family=Noto+Sans+Devanagari:wght@400;700&family=Noto+Sans+JP:wght@400;700&family=Noto+Sans+KR:wght@400;700&family=Noto+Sans+SC:wght@400;700&family=Noto+Sans+Telugu:wght@400;700&family=Noto+Sans+Sinhala:wght@400;700&family=Noto+Sans+Tamil:wght@400;700&display=swap');
