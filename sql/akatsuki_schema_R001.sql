@@ -307,7 +307,7 @@ $$;
 create or replace view akatsuki_docs with (security_invoker = on) as
 select user_id, doc, path, owner_app,
        jsonb_agg(value order by item_key) filter (where deleted_at is null and item_key <> '') as items,
-       max(value) filter (where item_key = '' and deleted_at is null)                         as scalar,
+       (jsonb_agg(value) filter (where item_key = '' and deleted_at is null)) -> 0            as scalar,
        max(seq) as seq
 from akatsuki_state
 group by user_id, doc, path, owner_app;

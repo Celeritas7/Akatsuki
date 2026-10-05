@@ -70,12 +70,19 @@
         return rpc('akatsuki_ack', { p_app: app, p_seq: seq, p_b_addr: addr ?? null, p_reply: reply ?? null, p_status: status });
       },
 
+      /** Reply later by the origin's address (R010) — e.g. WF tick: hub.reply('cost','request.created',{id},{status:'done',at}). */
+      async reply(fromApp, kind, addr, reply) {
+        return rpc('akatsuki_reply', { p_app: app, p_from_app: fromApp, p_kind: kind, p_src_addr: addr, p_reply: reply });
+      },
+
       /** The origin's thing is gone or parked. Keep the link, mark it. */
       async orphan(addr) { return rpc('akatsuki_orphan', { p_a_app: app, p_a_addr: addr }); },
 
-      /** Request / reply — read replies to things I published. */
+      /** Request / reply — read replies to things I published.
+       *  Pages on reply_seq (R010), not seq: a late reply or an un-tick moves reply_seq only.
+       *  Keep the max reply_seq you've seen and pass it back as sinceSeq. */
       async replies(kind, sinceSeq = 0) {
-        let q = supabase.from('akatsuki_requests').select('seq,kind,src_addr,payload,reply,delivered_at').eq('from_app', app).not('reply', 'is', null).gt('seq', sinceSeq).order('seq');
+        let q = supabase.from('akatsuki_requests').select('seq,reply_seq,kind,src_addr,payload,reply,delivered_at').eq('from_app', app).not('reply', 'is', null).gt('reply_seq', sinceSeq).order('reply_seq');
         if (kind) q = q.eq('kind', kind);
         const { data, error } = await q; if (error) throw new Error(error.message); return data;
       },
