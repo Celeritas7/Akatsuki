@@ -2,6 +2,7 @@
   "name": "Akatsuki",
   "short_name": "Akatsuki",
   "description": "The hub every app talks through.",
+  "id": "/Akatsuki/?app=akatsuki-hub",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
