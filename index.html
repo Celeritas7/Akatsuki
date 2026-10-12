@@ -12,7 +12,7 @@
 <script src="./support.js"></script>
 <script>
 if ('serviceWorker' in navigator && location.protocol !== 'file:') addEventListener('load', () => {
-  navigator.serviceWorker.register('sw.js').then(() => console.log('[akatsuki] build', window.AKATSUKI_BUILD || 'dev')).catch(() => {});
+  navigator.serviceWorker.register('sw.js').then(() => console.log('[akatsuki] build', window.AKATSUKI_BUILD || 'dev')).catch(err => console.error('[akatsuki] service worker failed', err));
   let had = !!navigator.serviceWorker.controller;
   navigator.serviceWorker.addEventListener('controllerchange', () => { if (had) location.reload(); had = true; });
 });

@@ -1,5 +1,6 @@
 // Akatsuki service worker. Cache name = AKATSUKI_BUILD from js/config.js — bump that, nothing here.
-importScripts('./js/config.js');
+self.window = self; // config.js writes to window.*; a worker has no window — without this the SW never installs
+try { importScripts('./js/config.js'); } catch (e) { console.warn('[akatsuki sw] config.js failed', e); }
 const CACHE = 'akatsuki-' + (self.AKATSUKI_BUILD || 'dev');
 const DS = '_ds/scriptura-design-system-72b4840c-4eb9-43ac-b161-8ce4436f9707';
 const SHELL = [
