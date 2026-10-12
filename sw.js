@@ -22,7 +22,7 @@ self.addEventListener('fetch', e => {
   if (!CACHED_ORIGINS.includes(u.origin) || u.hostname.endsWith('.supabase.co')) return; // hub data is never cached
   // network first, cache fallback — never a stale shell while online
   e.respondWith(fetch(e.request).then(r => {
-    if (r.ok || r.type === 'opaque') caches.open(CACHE).then(c => c.put(e.request, r.clone()));
+    if (r.ok || r.type === 'opaque') { const copy = r.clone(); caches.open(CACHE).then(c => c.put(e.request, copy)); }
     return r;
   }).catch(() => caches.match(e.request, { ignoreSearch: u.origin === self.location.origin })));
 });
