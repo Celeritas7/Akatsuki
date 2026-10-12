@@ -2,8 +2,21 @@
 <html>
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Akatsuki">
+<link rel="manifest" href="manifest.json">
 <script src="./support.js"></script>
+<script>
+if ('serviceWorker' in navigator && location.protocol !== 'file:') addEventListener('load', () => {
+  navigator.serviceWorker.register('sw.js').then(() => console.log('[akatsuki] build', window.AKATSUKI_BUILD || 'dev')).catch(() => {});
+  let had = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (had) location.reload(); had = true; });
+});
+</script>
 </head>
 <body>
 <x-dc>
@@ -17,6 +30,9 @@
   <script src="_ds/scriptura-design-system-72b4840c-4eb9-43ac-b161-8ce4436f9707/_ds_bundle.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/config.js"></script>
+  <title>Akatsuki</title>
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
   <style>
     html, body { margin: 0; background: #0a0a0f; color: #f0f0f5; font-family: 'Outfit', system-ui, sans-serif; }
     a { color: #f97316; text-decoration: none; } a:hover { color: #fb923c; }
@@ -34,11 +50,42 @@
   </style>
 </helmet>
 {{ atmosphere }}
+<sc-if value="{{ showLogin }}" hint-placeholder-val="{{ false }}">
+  <div data-screen-label="Login" style="position:relative; z-index:1; min-height:100vh; display:grid; place-items:center; padding:32px 20px; box-sizing:border-box">
+    <div style="width:100%; max-width:400px; display:flex; flex-direction:column; align-items:center; gap:28px; text-align:center; animation:aka-in .4s ease">
+      <img src="assets/logo-moon-3a.png" alt="Akatsuki" style="width:200px; height:200px; margin:-20px 0">
+      <div style="display:flex; flex-direction:column; gap:8px; align-items:center">
+        <span style="font-weight:700; font-size:1.9rem; letter-spacing:8px; text-transform:uppercase; padding-left:8px">akatsuki</span>
+        <span style="font-size:.95rem; color:var(--text-secondary)">The hub every app talks through.</span>
+      </div>
+      <sc-if value="{{ authChecked }}" hint-placeholder-val="{{ true }}">
+        <div style="width:100%; box-sizing:border-box; display:flex; flex-direction:column; gap:16px; padding:24px; border-radius:var(--radius-2xl); background:rgba(18,18,26,.78); border:1px solid rgba(239,68,68,.28); box-shadow:0 20px 60px rgba(0,0,0,.45); backdrop-filter:blur(10px)">
+          <button type="button" onClick="{{ googleSignIn }}" style="min-height:50px; display:flex; align-items:center; justify-content:center; gap:12px; border-radius:12px; background:#ffffff; color:#1f1f1f; border:none; font-family:'Outfit', system-ui, sans-serif; font-size:1rem; font-weight:600; cursor:pointer" style-hover="background:#f1f1f4">
+            <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.650z"></path><path fill="#FBBC05" d="M10.53 28.59c-.48-1.450-.76-2.990-.76-4.590s.27-3.140.76-4.590l-7.98-6.190C.92 16.460 0 20.120 0 24c0 3.880.92 7.540 2.56 10.780l7.97-6.190z"></path><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path></svg>
+            {{ googleLabel }}
+          </button>
+          <div style="display:flex; align-items:center; gap:12px; color:var(--text-muted); font-size:.72rem; letter-spacing:1.5px; text-transform:uppercase; font-weight:600">
+            <span style="flex:1; height:1px; background:var(--border-color)"></span>or email link<span style="flex:1; height:1px; background:var(--border-color)"></span>
+          </div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap">
+            <input type="email" placeholder="you@example.com" value="{{ authEmail }}" onChange="{{ setAuthEmail }}" onKeyDown="{{ emailKey }}" style="flex:1 1 180px; min-width:0; background:var(--bg-secondary); border:1px solid var(--border-color); color:var(--text-primary); border-radius:12px; padding:12px 14px; font-size:.95rem; min-height:48px; box-sizing:border-box">
+            <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Button" variant="secondary" on-click="{{ sendLink }}" hint-size="auto,48px">Send link</x-import>
+          </div>
+          <sc-if value="{{ loginMsg }}" hint-placeholder-val="{{ false }}">
+            <span style="font-size:.85rem; line-height:1.45; color: {{ loginMsgColor }}; text-wrap:pretty">{{ loginMsg }}</span>
+          </sc-if>
+        </div>
+      </sc-if>
+      <span style="font-size:.72rem; color:#6b6b85; line-height:1.5">Moon: <a href="https://commons.wikimedia.org/wiki/File:FullMoon2010.jpg" target="_blank" rel="noopener" style="color:#8888aa">Gregory H. Revera</a>, <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener" style="color:#8888aa">CC BY-SA 3.0</a>, tinted.</span>
+    </div>
+  </div>
+</sc-if>
+<sc-if value="{{ showApp }}" hint-placeholder-val="{{ true }}">
 <div data-screen-label="Akatsuki" style="position:relative; z-index:1; display:flex; min-height:100vh; align-items:stretch">
   <sc-if value="{{ navRail }}" hint-placeholder-val="{{ true }}">
     <nav style="width:212px; flex:none; padding:28px 16px; display:flex; flex-direction:column; gap:28px; border-right:1px solid rgba(239,68,68,.25); background:linear-gradient(180deg, rgba(239,68,68,.06), rgba(18,18,26,0) 40%), var(--bg-secondary)">
       <div style="display:flex; align-items:center; gap:10px; padding:0 8px">
-        <span style="font-family:var(--font-japanese); font-size:2.1rem; line-height:1; font-weight:700; background:linear-gradient(135deg, #ef4444, #f97316); -webkit-background-clip:text; background-clip:text; color:transparent; filter:drop-shadow(0 0 14px rgba(239,68,68,.55))">暁</span>
+        <img src="assets/logo-moon-3a.png" alt="" aria-hidden="true" style="width:44px; height:44px; flex:none; margin:-5px">
         <div style="display:flex; flex-direction:column">
           <span style="font-weight:700; font-size:1.2rem; letter-spacing:2px; text-transform:uppercase">akatsuki</span>
           <span style="font-size:.75rem; color:var(--text-secondary)">the attackers' channel</span>
@@ -55,13 +102,22 @@
         <span style="font-weight:600; color: {{ viewerColor }}">{{ viewerName }}</span>
         <span style="font-size:.8rem; color:var(--text-secondary)">{{ viewerNote }}</span>
       </div>
+      <button type="button" onClick="{{ openSettings }}" style="display:flex; align-items:center; justify-content:center; gap:10px; min-height:44px; padding:0 16px; border-radius:12px; font-family:'Outfit', system-ui, sans-serif; font-size:.95rem; font-weight:600; cursor:pointer; background:transparent; color:var(--text-secondary); border:1px solid var(--border-color)" style-hover="color:#f0f0f5; border-color:rgba(239,68,68,.45)">⚙️ Settings</button>
     </nav>
   </sc-if>
-  <main style="flex:1; min-width:0; max-width:1120px; padding:28px 32px 48px; display:flex; flex-direction:column; gap:24px">
+  <main style="flex:1; min-width:0; max-width:1120px; padding: {{ mainPad }}; display:flex; flex-direction:column; gap:24px">
+    <sc-if value="{{ mobile }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:12px">
+        <div style="display:flex; align-items:center; gap:10px; min-width:0">
+          <img src="assets/logo-moon-3a.png" alt="" aria-hidden="true" style="width:44px; height:44px; flex:none; margin:-5px">
+          <span style="font-weight:700; font-size:1.15rem; letter-spacing:2px; text-transform:uppercase">akatsuki</span>
+        </div>
+      </div>
+    </sc-if>
     <sc-if value="{{ navBar }}" hint-placeholder-val="{{ false }}">
       <div style="display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap">
         <div style="display:flex; align-items:center; gap:10px">
-          <span style="font-family:var(--font-japanese); font-size:2.1rem; line-height:1; font-weight:700; background:linear-gradient(135deg, #ef4444, #f97316); -webkit-background-clip:text; background-clip:text; color:transparent; filter:drop-shadow(0 0 14px rgba(239,68,68,.55))">暁</span>
+          <img src="assets/logo-moon-3a.png" alt="" aria-hidden="true" style="width:44px; height:44px; flex:none; margin:-5px">
           <span style="font-weight:700; font-size:1.2rem; letter-spacing:2px; text-transform:uppercase">akatsuki</span>
         </div>
         <div style="display:flex; gap:6px; padding:6px; background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:var(--radius-xl)">
@@ -70,7 +126,10 @@
           <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Tab" layout="inline" icon="🏷️" accent="review" active="{{ isStanding }}" on-click="{{ goStanding }}" hint-size="auto,44px">Standing</x-import>
           <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Tab" layout="inline" icon="🔗" accent="review" active="{{ isHub }}" on-click="{{ goHub }}" hint-size="auto,44px">Hub</x-import>
         </div>
-        <span style="font-size:.85rem; color:var(--text-secondary)">Reading as <span style="font-weight:600; color: {{ viewerColor }}">{{ viewerName }}</span></span>
+        <div style="display:flex; align-items:center; gap:14px">
+          <span style="font-size:.85rem; color:var(--text-secondary)">Reading as <span style="font-weight:600; color: {{ viewerColor }}">{{ viewerName }}</span></span>
+          <button type="button" onClick="{{ openSettings }}" aria-label="Settings" style="width:44px; height:44px; display:grid; place-items:center; font-size:1.2rem; border-radius:12px; background:var(--bg-card); color:var(--text-primary); border:1px solid var(--border-color); cursor:pointer">⚙️</button>
+        </div>
       </div>
     </sc-if>
 
@@ -96,7 +155,7 @@
             <span style="font-weight:600; font-size:var(--fs-lg)">Post a claim as <span style="color: {{ viewerColor }}">{{ viewerName }}</span></span>
             <span style="font-size:.85rem; color:var(--text-secondary)">Clashes are found before you post, not after the day locks.</span>
           </div>
-          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:12px">
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(min(140px, 100%), 1fr)); gap:12px">
             <label style="display:flex; flex-direction:column; gap:6px; font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-secondary); font-weight:600">Day
               <select value="{{ form.day }}" onChange="{{ setDay }}" style="background:var(--bg-secondary); border:1px solid var(--border-color); color:var(--text-primary); border-radius:10px; padding:10px 12px; font-size:.95rem; min-height:44px; letter-spacing:0; text-transform:none">
                 <option value="weekday">Weekday</option>
@@ -136,7 +195,7 @@
             <span style="font-weight:600; font-size:var(--fs-lg)">File a card</span>
             <span style="font-size:.85rem; color:var(--text-secondary)">Akatsuki judges before anyone writes an adapter.</span>
           </div>
-          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px">
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(min(180px, 100%), 1fr)); gap:12px">
             <label style="display:flex; flex-direction:column; gap:6px; font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-secondary); font-weight:600">Role
               <select value="{{ reg.role }}" onChange="{{ setReg.role }}" style="background:var(--bg-secondary); border:1px solid var(--border-color); color:var(--text-primary); border-radius:10px; padding:10px 12px; font-size:.95rem; min-height:44px; letter-spacing:0; text-transform:none">
                 <option value="app">App · emits and accepts</option>
@@ -213,7 +272,7 @@
           <sc-if value="{{ regIsApi }}" hint-placeholder-val="{{ false }}">
             <div style="display:flex; flex-direction:column; gap:12px; padding:16px; border-radius:var(--radius-xl); background:rgba(139,92,246,.06); border:1px solid rgba(139,92,246,.3)">
               <span style="font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:#c4b5fd; font-weight:600">Source only · fetch and cache, never passthrough</span>
-              <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px">
+              <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(min(180px, 100%), 1fr)); gap:12px">
                 <label style="display:flex; flex-direction:column; gap:6px; font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-secondary); font-weight:600">Endpoint
                   <input type="text" placeholder="api.example.com/v1/…" value="{{ reg.endpoint }}" onChange="{{ setReg.endpoint }}" style="background:var(--bg-secondary); border:1px solid var(--border-color); color:var(--text-primary); border-radius:10px; padding:10px 12px; font-size:.95rem; min-height:44px; letter-spacing:0; text-transform:none; font-family:ui-monospace, Menlo, monospace">
                 </label>
@@ -253,7 +312,7 @@
               </div>
               <span style="font-size:.85rem; color:var(--text-secondary)">{{ clashCount }}</span>
             </div>
-            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(230px, 1fr)); gap:20px; align-items:start">
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(min(230px, 100%), 1fr)); gap:20px; align-items:start">
               <div style="display:flex; flex-direction:column; gap:10px; padding:18px; border-radius:var(--radius-xl); background:linear-gradient(135deg, rgba(239,68,68,.22), rgba(249,115,22,.08)); border:1px solid rgba(239,68,68,.45); box-shadow: inset 0 1px 0 rgba(255,255,255,.04), 0 4px 15px rgba(239,68,68,.15)">
                 <span style="font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:#f87171; font-weight:700">Holds the slot</span>
                 <span style="font-size:var(--fs-title); font-weight:700; letter-spacing:-.3px">Executive</span>
@@ -414,7 +473,7 @@
             </div>
           </div>
         </x-import>
-        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:16px">
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap:16px">
           <sc-for list="{{ boardList }}" as="i" hint-placeholder-count="6">
             <div style="background:var(--bg-card); border:1px solid {{ i.border }}; border-radius:var(--radius-2xl); padding:16px 18px; display:flex; flex-direction:column; gap:6px">
               <div style="display:flex; justify-content:space-between; gap:8px; align-items:baseline">
@@ -498,7 +557,7 @@
               <span style="font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-secondary); font-weight:600">Outside · no read</span>
               <span style="font-size:.85rem; color:var(--text-secondary)">An attacker admits one at a time.</span>
             </div>
-            <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:10px">
+            <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(min(200px, 100%), 1fr)); gap:10px">
               <sc-for list="{{ outsiders }}" as="o" hint-placeholder-count="8">
                 <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 14px; border-radius:var(--radius-md); background:var(--bg-secondary); border:1px solid var(--border-color)">
                   <div style="display:flex; flex-direction:column; gap:2px; min-width:0">
@@ -527,12 +586,6 @@
               <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Button" size="sm" accent="review" on-click="{{ sendLink }}" hint-size="auto,44px">Send magic link</x-import>
             </div>
           </sc-if>
-          <sc-if value="{{ showSignOut }}" hint-placeholder-val="{{ false }}">
-            <div style="display:flex; gap:8px; align-items:center">
-              <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Button" size="sm" variant="secondary" on-click="{{ reloadLive }}" hint-size="auto,44px">↻ Reload</x-import>
-              <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Button" size="sm" variant="ghost" on-click="{{ signOut }}" hint-size="auto,44px">Sign out</x-import>
-            </div>
-          </sc-if>
         </div>
         <div style="display:flex; gap:8px; flex-wrap:wrap">
           <x-import component-from-global-scope="ScripturaDesignSystem_72b484.StatChip" value="{{ hubRegistered }}" label="cards filed" tone="neutral" hint-size="auto,40px"></x-import>
@@ -541,6 +594,30 @@
           <x-import component-from-global-scope="ScripturaDesignSystem_72b484.StatChip" value="{{ hubNotReady }}" label="not ready" tone="neutral" hint-size="auto,40px"></x-import>
           <x-import component-from-global-scope="ScripturaDesignSystem_72b484.StatChip" value="{{ hubSourceCount }}" label="API sources" tone="neutral" hint-size="auto,40px"></x-import>
           <x-import component-from-global-scope="ScripturaDesignSystem_72b484.StatChip" value="{{ hubLive }}" label="links live" tone="neutral" hint-size="auto,40px"></x-import>
+          <x-import component-from-global-scope="ScripturaDesignSystem_72b484.StatChip" value="{{ healthCount }}" label="open health findings" tone="neutral" hint-size="auto,40px"></x-import>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:14px">
+          <div style="display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap">
+            <span style="font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:#ef4444; font-weight:600">🩺 Health · does what they store survive</span>
+            <span style="font-size:.85rem; color:var(--text-secondary); text-wrap:pretty">{{ healthNote }}</span>
+          </div>
+          <sc-if value="{{ healthEmpty }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:14px 16px; border-radius:var(--radius-xl); background:var(--bg-card); border:1px solid var(--border-color); font-size:.9rem; color:var(--text-secondary)">{{ healthEmptyText }}</div>
+          </sc-if>
+          <div style="display:flex; flex-direction:column; gap:8px">
+            <sc-for list="{{ hubHealth }}" as="hf" hint-placeholder-count="4">
+              <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px 12px; padding:12px 14px; border-radius:var(--radius-xl); background:var(--bg-card); border:1px solid {{ hf.border }}">
+                <span style="font-size:.68rem; letter-spacing:1.2px; text-transform:uppercase; font-weight:700; padding:3px 9px; border-radius:6px; color:#fff; background: {{ hf.sevColor }}; white-space:nowrap">{{ hf.sev }}</span>
+                <span style="font-weight:700; white-space:nowrap">{{ hf.app }}</span>
+                <span style="font-size:.75rem; font-family:ui-monospace, Menlo, monospace; color:var(--text-muted); white-space:nowrap">{{ hf.code }} {{ hf.codeName }}</span>
+                <span style="font-size:.85rem; color:var(--text-primary); flex:1 1 280px; min-width:0; text-wrap:pretty">{{ hf.text }}</span>
+                <span style="font-size:.75rem; font-family:ui-monospace, Menlo, monospace; color:var(--text-secondary); overflow-wrap:anywhere">{{ hf.where }}</span>
+                <span style="font-size:.75rem; color:var(--text-muted); white-space:nowrap">{{ hf.age }}</span>
+                <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Button" size="sm" variant="ghost" on-click="{{ hf.resolve }}" hint-size="auto,32px">Mark fixed</x-import>
+              </div>
+            </sc-for>
+          </div>
         </div>
 
         <div style="display:flex; flex-direction:column; gap:14px">
@@ -548,7 +625,7 @@
             <span style="font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:#f97316; font-weight:600">Registry · one card per app</span>
             <span style="font-size:.85rem; color:var(--text-secondary); text-wrap:pretty">Six questions decide it: a stable address, a change signal, a known pattern, a payload map, owned paths, and reach. Pass all six and the app links to anything — even apps that don't exist yet.</span>
           </div>
-          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:14px">
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap:14px">
             <sc-for list="{{ hubApps }}" as="h" hint-placeholder-count="7">
               <div style="background:var(--bg-card); border:1px solid {{ h.border }}; border-radius:var(--radius-2xl); padding:18px 20px; display:flex; flex-direction:column; gap:14px; box-shadow: {{ h.glow }}; animation: aka-in .3s ease">
                 <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap">
@@ -587,7 +664,7 @@
             <span style="font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:#8b5cf6; font-weight:600">Sources · APIs the hub fetches</span>
             <span style="font-size:.85rem; color:var(--text-secondary); text-wrap:pretty">A source emits and never accepts. Two apps on one API is still one call — pull and cache, never synchronous passthrough.</span>
           </div>
-          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(290px, 1fr)); gap:14px">
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(min(290px, 100%), 1fr)); gap:14px">
             <sc-for list="{{ hubSources }}" as="s" hint-placeholder-count="3">
               <div style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius-2xl); padding:18px 20px; display:flex; flex-direction:column; gap:12px">
                 <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap">
@@ -663,7 +740,7 @@
             <div style="display:flex; flex-direction:column; gap:8px">
               <sc-for list="{{ hubLinks }}" as="lk" hint-placeholder-count="6">
                 <div style="display:flex; flex-wrap:wrap; align-items:center; gap:12px; padding:12px 14px; border-radius:var(--radius-xl); background:var(--bg-secondary); border:1px solid {{ lk.border }}">
-                  <div style="display:flex; align-items:center; gap:8px; flex:0 0 auto; min-width:230px">
+                  <div style="display:flex; align-items:center; gap:8px; flex:0 0 auto; min-width:min(230px, 100%)">
                     <span style="font-weight:700; white-space:nowrap">{{ lk.from }}</span>
                     <span style="color: {{ lk.patColor }}; font-size:1.1rem; line-height:1">{{ lk.arrow }}</span>
                     <span style="font-weight:700; white-space:nowrap">{{ lk.to }}</span>
@@ -683,7 +760,7 @@
             <span style="font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-secondary); font-weight:600">Vocab · agreed character for character</span>
             <span style="font-size:.85rem; color:var(--text-secondary)">One row per shared id. Apps read it; they never carry a local copy.</span>
           </div>
-          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:14px">
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap:14px">
             <sc-for list="{{ hubVocab }}" as="v" hint-placeholder-count="4">
               <div style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius-2xl); padding:16px 18px; display:flex; flex-direction:column; gap:10px">
                 <div style="display:flex; align-items:baseline; justify-content:space-between; gap:8px">
@@ -705,7 +782,36 @@
       </div>
     </sc-if>
   </main>
+  <sc-if value="{{ mobile }}" hint-placeholder-val="{{ false }}">
+    <nav aria-label="Sections" style="position:fixed; left:0; right:0; bottom:0; z-index:20; display:flex; padding:0 4px env(safe-area-inset-bottom, 0); background:rgba(18,18,26,.96); backdrop-filter:blur(10px); border-top:1px solid rgba(239,68,68,.25)">
+      <button type="button" onClick="{{ goChannel }}" style="flex:1; min-width:0; min-height:56px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; background:transparent; border:none; cursor:pointer; font-family:'Outfit', system-ui, sans-serif; font-size:.72rem; font-weight:600; color: {{ tabChannelColor }}"><span style="font-size:1.25rem; line-height:1">💬</span>Channel</button>
+      <button type="button" onClick="{{ goBoard }}" style="flex:1; min-width:0; min-height:56px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; background:transparent; border:none; cursor:pointer; font-family:'Outfit', system-ui, sans-serif; font-size:.72rem; font-weight:600; color: {{ tabBoardColor }}"><span style="font-size:1.25rem; line-height:1">📅</span>Board</button>
+      <button type="button" onClick="{{ goStanding }}" style="flex:1; min-width:0; min-height:56px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; background:transparent; border:none; cursor:pointer; font-family:'Outfit', system-ui, sans-serif; font-size:.72rem; font-weight:600; color: {{ tabStandingColor }}"><span style="font-size:1.25rem; line-height:1">🏷️</span>Standing</button>
+      <button type="button" onClick="{{ goHub }}" style="flex:1; min-width:0; min-height:56px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; background:transparent; border:none; cursor:pointer; font-family:'Outfit', system-ui, sans-serif; font-size:.72rem; font-weight:600; color: {{ tabHubColor }}"><span style="font-size:1.25rem; line-height:1">🔗</span>Hub</button>
+      <button type="button" onClick="{{ openSettings }}" style="flex:1; min-width:0; min-height:56px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; background:transparent; border:none; cursor:pointer; font-family:'Outfit', system-ui, sans-serif; font-size:.72rem; font-weight:600; color: {{ tabSettingsColor }}"><span style="font-size:1.25rem; line-height:1">⚙️</span>Settings</button>
+    </nav>
+  </sc-if>
+  <sc-if value="{{ settingsOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ closeSettings }}" style="position:fixed; inset:0; z-index:40; display:flex; align-items: {{ sheetAlign }}; justify-content:center; padding: {{ sheetPad }}; box-sizing:border-box; background:rgba(5,5,10,.72); backdrop-filter:blur(4px)">
+      <div role="dialog" aria-label="Settings" onClick="{{ stop }}" style="width:100%; max-width:420px; max-height:100%; overflow:auto; box-sizing:border-box; display:flex; flex-direction:column; gap:20px; padding:22px; border-radius: {{ sheetRadius }}; background:var(--bg-secondary); border:1px solid rgba(239,68,68,.3); box-shadow:0 24px 80px rgba(0,0,0,.6); animation:aka-in .25s ease">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px">
+          <span style="font-weight:700; font-size:1.2rem">Settings</span>
+          <button type="button" onClick="{{ closeSettings }}" aria-label="Close" style="width:44px; height:44px; display:grid; place-items:center; font-size:1.1rem; border-radius:12px; background:transparent; color:var(--text-secondary); border:1px solid var(--border-color); cursor:pointer">✕</button>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:8px"><span style="font-size:.72rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-muted); font-weight:600">Account</span><div style="display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:12px; background:var(--bg-card); border:1px solid var(--border-color)"><span style="width:8px; height:8px; flex:none; border-radius:50%; background: {{ liveColor }}; box-shadow:0 0 10px {{ liveColor }}"></span><span style="font-size:.9rem; overflow-wrap:anywhere; min-width:0">{{ accountLine }}</span></div></div>
+        <div style="display:flex; flex-direction:column; gap:8px"><span style="font-size:.72rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-muted); font-weight:600">Atmosphere</span><x-import component-from-global-scope="ScripturaDesignSystem_72b484.SegmentedControl" options="{{ atmoOptions }}" value="{{ atmoValue }}" on-change="{{ setAtmo }}" accent="review" hint-size="auto,44px"></x-import></div>
+        <sc-if value="{{ showSignOut }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex; flex-direction:column; gap:10px">
+            <button type="button" onClick="{{ reloadSettings }}" style="display:flex; align-items:center; justify-content:center; gap:10px; min-height:44px; padding:0 16px; border-radius:12px; font-family:'Outfit', system-ui, sans-serif; font-size:.95rem; font-weight:600; cursor:pointer; background:var(--bg-card); color:var(--text-primary); border:1px solid var(--border-color)">↻ Reload data</button>
+            <button type="button" onClick="{{ signOutSettings }}" style="display:flex; align-items:center; justify-content:center; gap:10px; min-height:44px; padding:0 16px; border-radius:12px; font-family:'Outfit', system-ui, sans-serif; font-size:.95rem; font-weight:600; cursor:pointer; background:rgba(239,68,68,.12); color:#fca5a5; border:1px solid rgba(239,68,68,.4)">Sign out</button>
+          </div>
+        </sc-if>
+        <span style="font-size:.72rem; color:#6b6b85; line-height:1.5">Moon: <a href="https://commons.wikimedia.org/wiki/File:FullMoon2010.jpg" target="_blank" rel="noopener" style="color:#8888aa">Gregory H. Revera</a>, <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener" style="color:#8888aa">CC BY-SA 3.0</a>, tinted.</span>
+      </div>
+    </div>
+  </sc-if>
 </div>
+</sc-if>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;viewAs&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;attacker&quot;,&quot;ally&quot;],&quot;default&quot;:&quot;attacker&quot;,&quot;tsType&quot;:&quot;'attacker' | 'ally'&quot;,&quot;section&quot;:&quot;Access&quot;},&quot;nav&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;rail&quot;,&quot;bar&quot;],&quot;default&quot;:&quot;rail&quot;,&quot;tsType&quot;:&quot;'rail' | 'bar'&quot;,&quot;section&quot;:&quot;Navigation&quot;},&quot;moon&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;rising&quot;,&quot;hidden&quot;],&quot;default&quot;:&quot;rising&quot;,&quot;tsType&quot;:&quot;'rising' | 'hidden'&quot;,&quot;section&quot;:&quot;Atmosphere&quot;},&quot;atmosphere&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;whisper&quot;,&quot;strong&quot;,&quot;off&quot;],&quot;default&quot;:&quot;strong&quot;,&quot;tsType&quot;:&quot;'whisper' | 'strong' | 'off'&quot;,&quot;section&quot;:&quot;Atmosphere&quot;}}">
 class Component extends DCLogic {
@@ -739,7 +845,7 @@ class Component extends DCLogic {
       reach: ':8091 · localStorage authoritative · offline-capable', payloadMap: 'label→label · every→interval_days · anchor→anchor · icon→vocab.icons · color→vocab.palette', ownedPaths: 'garbage[] · cycles[kind:home] · anchor — never away / done / overrides / block',
       flags: ['whole-row upsert can clobber Calendar\'s done{} — must be shredded by owner', 'anchor moves on every done; a stale anchor draws the wrong grid'] },
     { id: 'cost', name: 'Cost', role: 'app', pattern: 'reply', address: '{id} · req<epoch><rand>', clock: 'none · status written in place', clockTrust: 'none', emits: 'status: approved | rejected', accepts: 'purchase_request', deletes: 'never', priv: 'expenses, JPY ledger', owners: true, session: 'jwt',
-      reach: 'separate project · paste-JSON fallback across origins', payloadMap: 'items[].priceYen→amount · currency→JPY fixed · status→reply.status', ownedPaths: 'reply.status only — never reorders or deletes the request',
+      reach: 'separate project · paste-JSON fallback across origins', payloadMap: 'items[].yen→amount · currency→JPY fixed · status→reply.status', ownedPaths: 'reply.status only — never reorders or deletes the request',
       flags: ['no change signal — origin re-reads on focus and every 15 s'] },
     { id: 'travel', name: 'Travel Plan', role: 'app', pattern: 'stream', address: '{trip_id, segment_id}', clock: '', clockTrust: 'unknown', emits: 'trip.segment', accepts: '—', deletes: 'hard', priv: '—', owners: false, session: 'unknown',
       reach: '', payloadMap: '', ownedPaths: '',
@@ -777,10 +883,30 @@ class Component extends DCLogic {
     try {
       this.sb = window.supabase.createClient(c.SUPABASE_URL, c.SUPABASE_ANON_KEY);
       const { data: { session } } = await this.sb.auth.getSession();
-      this.setState({ session: session || null, authMsg: '' });
+      const q = new URLSearchParams((location.hash || '').slice(1) || location.search);
+      const oauthErr = q.get('error_description');
+      if (oauthErr) history.replaceState(null, '', location.pathname);
+      this.setState({ session: session || null, authChecked: true, authMsg: oauthErr ? 'Sign-in failed: ' + oauthErr.replace(/\+/g, ' ') : '' });
       this.sb.auth.onAuthStateChange((_e, s) => { this.setState({ session: s || null }); if (s) this.loadLive(); else this.setState({ live: null }); });
       if (session) await this.loadLive();
-    } catch (e) { this.setState({ authMsg: 'Could not reach Supabase: ' + e.message }); }
+    } catch (e) { this.setState({ authChecked: true, authMsg: 'Could not reach Supabase: ' + e.message }); }
+  }
+  async googleSignIn() {
+    if (!this.sb) return;
+    this.setState({ oauthBusy: true, authMsg: '' });
+    const { error } = await this.sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + location.pathname } });
+    if (error) this.setState({ oauthBusy: false, authMsg: /provider is not enabled|Unsupported provider/i.test(error.message) ? 'Google sign-in is not switched on in Supabase yet (Authentication → Providers → Google).' : error.message });
+  }
+  async loadHealth() {
+    if (!this.sb) return;
+    const { data, error } = await this.sb.from('akatsuki_violations').select('seq,at,actor,table_name,path,addr,before_val,after_val,code')
+      .not('code', 'is', null).is('resolved_at', null).order('seq', { ascending: false }).limit(300);
+    this.setState({ health: error ? null : data, healthErr: error ? error.message : '' });
+  }
+  async resolveFinding(seq) {
+    const { error } = await this.sb.rpc('akatsuki_violation_resolve', { p_seq: seq, p_note: 'board' });
+    if (error) { this.setState({ authMsg: 'Resolve failed: ' + error.message }); return; }
+    this.loadHealth();
   }
   async loadLive() {
     if (!this.sb) return;
@@ -806,6 +932,7 @@ class Component extends DCLogic {
           consumers: c.consumers || [], rotated: c.rotated_at ? String(c.rotated_at).slice(0, 10) : 'never', risk: c.location === 'client_bundle' ? 'Ships in every bundle. Safe only while RLS is real on every table it can reach.' : '' }))
       };
       this.setState({ live, apps: live.apps, liveBusy: false, authMsg: '' });
+      this.loadHealth();
     } catch (e) { this.setState({ liveBusy: false, authMsg: 'Load failed: ' + e.message }); }
   }
   async sendLink() {
@@ -852,7 +979,14 @@ class Component extends DCLogic {
     ]
   };
 
-  componentDidMount() { this.setState({ viewAs: this.props.viewAs || 'attacker' }); this.initLive(); }
+  componentDidMount() {
+    this.setState({ viewAs: this.props.viewAs || 'attacker', vw: window.innerWidth });
+    this.onResize = () => this.setState({ vw: window.innerWidth });
+    this.onKey = (e) => { if (e.key === 'Escape') this.setState({ settingsOpen: false }); };
+    window.addEventListener('resize', this.onResize); document.addEventListener('keydown', this.onKey);
+    this.initLive();
+  }
+  componentWillUnmount() { window.removeEventListener('resize', this.onResize); document.removeEventListener('keydown', this.onKey); }
   componentDidUpdate(prev) { if (prev.viewAs !== this.props.viewAs) this.setState({ viewAs: this.props.viewAs || 'attacker' }); }
 
   sq(name) { return this.SQUADS.find(s => s.name === name); }
@@ -907,7 +1041,8 @@ class Component extends DCLogic {
     const viewerName = isAttacker ? 'Executive' : 'Cleaning';
     const viewerColor = this.colorOf(viewerName);
     const nav = this.props.nav || 'rail';
-    const strength = this.props.atmosphere || 'strong';
+    const strength = S.atmo || this.props.atmosphere || 'strong';
+    const mobile = (S.vw || window.innerWidth) < 760;
     const moonOn = (this.props.moon || 'rising') !== 'hidden';
     const live = S.challengers.some(c => c.status === 'pending');
     const pendingCount = S.challengers.filter(c => c.status === 'pending').length;
@@ -1138,6 +1273,24 @@ class Component extends DCLogic {
       this.addPost({ squad: 'Executive', kind: 'Registration', text: `${card.name} filed a card. Judged ${regJ.verdict}.`, sub: regJ.verdict === 'linkable' ? 'Passes all four questions.' : regJ.checks.filter(c => c.color !== '#22c55e').map(c => c.k + ': ' + c.hint).join(' · ') }, regJ.verdict !== 'linkable');
     };
     const verdicts = hubApps.map(h => h.verdict);
+    const SEV = { critical: [0, '#ef4444'], high: [1, '#f97316'], medium: [2, '#d97706'], low: [3, '#6b6b85'] };
+    const CODE = { AK401: ['shrink', 'high'], AK402: ['stuck pending', 'medium'], AK403: ['backup stale', 'high'], AK404: ['app reported', 'high'], AK405: ['unchecked', 'low'], AK409: ['reviewed', 'medium'] };
+    const ago = (t) => { const d = Math.floor((Date.now() - new Date(t)) / 864e5); return d <= 0 ? 'today' : d === 1 ? '1 day' : d + ' days'; };
+    const seen = new Set();
+    const hubHealth = (S.health || []).filter(v => { const k = v.code + '|' + v.actor + '|' + v.path; if (seen.has(k)) return false; seen.add(k); return true; }).map(v => {
+      const a = v.after_val || {}, b = v.before_val || {};
+      const [codeName, defSev] = CODE[v.code] || [v.code, 'medium'];
+      const sev = (v.code === 'AK409' ? (v.addr && v.addr.severity) : defSev) || 'medium';
+      const text = v.code === 'AK409' ? (a.finding || '') + (a.pattern ? ' · ' + a.pattern : '')
+        : v.code === 'AK401' ? `${v.path} fell from ${b.n} to ${a.n}`
+        : v.code === 'AK402' ? `${a.pending} requests pending since ${String(a.oldest || '').slice(0, 10)}`
+        : v.code === 'AK403' ? 'No snapshot since ' + (a.last || 'ever')
+        : v.code === 'AK404' ? `Check ${v.path} failed` + (a.note ? ': ' + a.note : '') + (a.build ? ' · build ' + a.build : '')
+        : v.code === 'AK405' ? 'The hub can’t see its storage: no akatsuki_* view, no health.report.' : JSON.stringify(a);
+      const [rank, sevColor] = SEV[sev] || SEV.medium;
+      return { rank, seq: v.seq, sev, sevColor, app: nameOf(v.actor), code: v.code, codeName, text, where: v.code === 'AK409' ? (a.where || v.path) : v.table_name,
+        age: ago(v.at), border: rank <= 1 ? 'rgba(239,68,68,.4)' : 'var(--border-color)', resolve: () => this.resolveFinding(v.seq) };
+    }).sort((x, y) => x.rank - y.rank || y.seq - x.seq);
 
     return {
       isHub, goHub: () => this.setState({ view: 'hub' }),
@@ -1146,14 +1299,29 @@ class Component extends DCLogic {
       reg, setReg, submitReg, regVerdictText, regVerdictColor: !reg.id || !reg.name ? 'var(--text-muted)' : regJ.color,
       hubRegistered: apps.length, hubLinkable: verdicts.filter(v => v === 'linkable').length, hubCost: verdicts.filter(v => v === 'linkable · with cost').length, hubNotReady: verdicts.filter(v => v === 'not ready').length,
       hubLive: linkRows.filter(l => l.state === 'live' || l.state === 'defect').length, hubSourceCount: srcRows.length,
+      hubHealth, healthCount: hubHealth.length, healthEmpty: hubHealth.length === 0,
+      healthEmptyText: !S.session ? 'Sign in to read health findings.' : S.healthErr ? 'Could not read findings: ' + S.healthErr + ' (run R026).' : S.health ? 'Nothing open.' : 'Loading…',
+      healthNote: 'Nightly checks (AK401–405) and code reviews (AK409). Open items only; the fix goes in the app’s next prompt.',
       liveLabel: !this.cfg() ? 'Seed' : S.session ? (S.liveBusy ? 'Live · loading' : 'Live') : 'Configured · signed out',
       liveColor: !this.cfg() ? '#8888aa' : S.session ? '#22c55e' : '#f59e0b',
       liveBorder: !this.cfg() ? 'var(--border-color)' : S.session ? 'rgba(34,197,94,.35)' : 'rgba(245,158,11,.4)',
       liveNote: S.authMsg || (!this.cfg() ? 'Showing the seeded ecosystem. Fill js/config.js with your Supabase URL and anon key to go live.' : S.session ? `Reading akatsuki_* as ${S.session.user.email}. Cards you file are written to akatsuki_apps.` : 'Sign in with the same account your other apps use — RLS shows nothing otherwise.'),
       showSignIn: !!this.cfg() && !S.session, showSignOut: !!this.cfg() && !!S.session,
+      showLogin: !!this.cfg() && !S.session, showApp: !this.cfg() || !!S.session, authChecked: !!S.authChecked,
+      googleSignIn: () => this.googleSignIn(), googleLabel: S.oauthBusy ? 'Opening Google…' : 'Continue with Google',
+      loginMsg: S.authMsg || '', loginMsgColor: /^Link sent/.test(S.authMsg || '') ? '#86efac' : '#fca5a5',
+      emailKey: (e) => { if (e.key === 'Enter') this.sendLink(); },
       authEmail: S.authEmail || '', setAuthEmail: (e) => this.setState({ authEmail: e.target.value }),
       sendLink: () => this.sendLink(), signOut: () => this.sb && this.sb.auth.signOut(), reloadLive: () => this.loadLive(),
-      atmosphere, navRail: nav === 'rail', navBar: nav === 'bar',
+      atmosphere, navRail: nav === 'rail' && !mobile, navBar: nav === 'bar' && !mobile, mobile,
+      mainPad: mobile ? '16px 16px 88px' : '28px 32px 48px',
+      tabChannelColor: S.view === 'channel' ? '#f97316' : '#8888aa', tabBoardColor: S.view === 'board' ? '#f97316' : '#8888aa',
+      tabStandingColor: S.view === 'standing' ? '#f97316' : '#8888aa', tabHubColor: S.view === 'hub' ? '#f97316' : '#8888aa', tabSettingsColor: S.settingsOpen ? '#f97316' : '#8888aa',
+      settingsOpen: !!S.settingsOpen, openSettings: () => this.setState({ settingsOpen: true }), closeSettings: () => this.setState({ settingsOpen: false }), stop: (e) => e.stopPropagation(),
+      sheetAlign: mobile ? 'flex-end' : 'center', sheetPad: mobile ? '0' : '24px', sheetRadius: mobile ? '20px 20px 0 0' : '20px',
+      accountLine: !this.cfg() ? 'Not connected · seeded data (fill js/config.js)' : S.session ? 'Signed in as ' + S.session.user.email : 'Signed out',
+      atmoOptions: [{ value: 'whisper', label: 'Whisper' }, { value: 'strong', label: 'Strong' }, { value: 'off', label: 'Off' }], atmoValue: strength, setAtmo: (v) => this.setState({ atmo: v }),
+      reloadSettings: () => { this.loadLive(); this.setState({ settingsOpen: false }); }, signOutSettings: () => { this.setState({ settingsOpen: false }); this.sb && this.sb.auth.signOut(); },
       isChannel: S.view === 'channel', isBoard: S.view === 'board', isStanding: S.view === 'standing',
       goChannel: () => this.setState({ view: 'channel' }), goBoard: () => this.setState({ view: 'board' }), goStanding: () => this.setState({ view: 'standing' }),
       viewAs, viewerName, viewerColor, isAttacker,
