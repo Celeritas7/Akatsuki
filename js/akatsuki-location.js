@@ -13,11 +13,12 @@
  *   · ticks frozen longer than readopt_s (hidden tab, sleep) = a gap: open visit closed at last-seen, coverage split (D1)
  *   · on start, an open visit seen ≤ readopt_s ago within radius + accuracy is continued; older ones are closed at last-seen
  *   · no blocks: home and office are recorded like anywhere else; the app filters what it shows (D2)
+ *   · F1 (Oct 14): no fresh fix for readopt_s (watch silenced in a background tab) = a gap too. Coverage only counts time with fixes.
  * Nothing is recorded while no connected app is open.
  */
 (function () {
   const DEF = { enabled: true, radius_m: 70, dwell_s: 240, accuracy_max_m: 150, stale_s: 120, heartbeat_s: 120, readopt_s: 600, tick_s: 20 };
-  const BUILD = 'akatsuki-location-2026-10-06';
+  const BUILD = 'akatsuki-location-2026-10-14';
   const r4 = (n) => Math.round(n * 1e4) / 1e4;
   const iso = (t) => new Date(t).toISOString();
   const dist = (a, b) => {
@@ -42,6 +43,7 @@
     let fix = null;                                   // latest fix {lat,lng,acc,t}
     let st = { anchor: null, since: 0, lastIn: 0, open: false, misses: 0, usedT: 0, lastBeat: 0, resumeTried: false };
     let cov = { since: 0, lastTick: 0, lastSent: 0 };
+    let lastTick = 0;
 
     const rpc = async (fn, args) => {
       const { data, error } = await sb.rpc(fn, args);
@@ -63,13 +65,17 @@
       busy = true;
       try {
         const now = Date.now();
-        // Gap: ticks were frozen (hidden tab, sleep, killed timers).  Short gaps carry on; long ones close and split coverage.
-        if (cov.lastTick && now - cov.lastTick > cfg.readopt_s * 1000) {
+        // Gap: ticks frozen (hidden tab, sleep, killed timers) OR ticking with no fresh fix (F1).  Long ones close and split coverage.
+        const frozen = lastTick && now - lastTick > cfg.readopt_s * 1000;
+        lastTick = now;
+        const blind = !fix || now - fix.t > cfg.readopt_s * 1000;
+        if (cov.since && (frozen || blind)) {
           await closeOpen('gap');
-          await markCoverage(cov.lastTick);
+          await markCoverage(frozen ? cov.lastTick : Math.max(cov.since, fix ? fix.t : cov.since));
           cov = { since: 0, lastTick: 0, lastSent: 0 };
           st.anchor = null;
         }
+        if (blind) return;                            // not watching: no coverage until a fresh fix
         if (!cov.since) { cov.since = now; cov.lastSent = now; await markCoverage(now); }
         cov.lastTick = now;
         if (now - cov.lastSent > 60000) { cov.lastSent = now; markCoverage(now); }
@@ -144,7 +150,8 @@
 
     return {
       device, build: BUILD,
-      state: () => ({ open: st.open, since: st.since ? iso(st.since) : null, lastIn: st.lastIn ? iso(st.lastIn) : null, misses: st.misses, cfg }),
+      state: () => ({ fixAcc: fix ? Math.round(fix.acc) : null, fixAge: fix ? Math.round((Date.now() - fix.t) / 1000) : null,
+        anchored: !!st.anchor, anchorSince: st.anchor && st.since ? iso(st.since) : null, open: st.open, since: st.since ? iso(st.since) : null, lastIn: st.lastIn ? iso(st.lastIn) : null, misses: st.misses, cfg }),
       stop() {
         stopped = true;
         if (watchId != null) navigator.geolocation.clearWatch(watchId);

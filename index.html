@@ -30,6 +30,7 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') addEventListe
   <script src="_ds/scriptura-design-system-72b4840c-4eb9-43ac-b161-8ce4436f9707/_ds_bundle.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/config.js"></script>
+  <script src="js/akatsuki-location.js"></script>
   <title>Akatsuki</title>
   <link rel="icon" type="image/png" href="assets/favicon.png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
@@ -599,6 +600,32 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') addEventListe
 
         <div style="display:flex; flex-direction:column; gap:14px">
           <div style="display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap">
+            <span style="font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:#f97316; font-weight:600">📍 Location · recorded by the hub</span>
+            <span style="font-size:.85rem; color:var(--text-secondary); text-wrap:pretty">Records only while Akatsuki is open on screen. Apps read visits, never coordinates.</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding:12px 16px; border-radius:var(--radius-xl); background:var(--bg-card); border:1px solid var(--border-color)">
+            <span style="display:flex; align-items:center; gap:8px; font-size:.85rem; font-weight:600; color: {{ locColor }}; white-space:nowrap"><span style="width:8px; height:8px; border-radius:50%; background: {{ locColor }}; box-shadow: 0 0 10px {{ locColor }}"></span>{{ locLabel }}</span>
+            <span style="font-size:.85rem; color:var(--text-secondary); flex:1 1 200px; min-width:0; text-wrap:pretty">{{ locNote }}</span>
+            <sc-if value="{{ locCanToggle }}" hint-placeholder-val="{{ false }}">
+              <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Button" size="sm" accent="review" on-click="{{ locToggle }}" hint-size="auto,44px">{{ locButton }}</x-import>
+            </sc-if>
+          </div>
+          <sc-if value="{{ locVisitsEmpty }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:12px 16px; border-radius:var(--radius-xl); background:var(--bg-card); border:1px solid var(--border-color); font-size:.9rem; color:var(--text-secondary)">{{ locVisitsEmptyText }}</div>
+          </sc-if>
+          <div style="display:flex; flex-direction:column; gap:8px">
+            <sc-for list="{{ locVisits }}" as="lv" hint-placeholder-count="3">
+              <div style="display:grid; grid-template-columns:minmax(0,1fr) auto; gap:4px 12px; padding:10px 14px; border-radius:var(--radius-xl); background:var(--bg-card); border:1px solid var(--border-color)">
+                <span style="font-weight:600; min-width:0; overflow-wrap:anywhere">{{ lv.place }}</span>
+                <span style="font-size:.85rem; font-weight:600; color: {{ lv.color }}; white-space:nowrap">{{ lv.dur }}</span>
+                <span style="grid-column:1 / -1; font-size:.8rem; color:var(--text-secondary)">{{ lv.when }} · {{ lv.from }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:14px">
+          <div style="display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap">
             <span style="font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:#ef4444; font-weight:600">🩺 Health · does what they store survive</span>
             <span style="font-size:.85rem; color:var(--text-secondary); text-wrap:pretty">{{ healthNote }}</span>
           </div>
@@ -887,7 +914,7 @@ class Component extends DCLogic {
       const oauthErr = q.get('error_description');
       if (oauthErr) history.replaceState(null, '', location.pathname);
       this.setState({ session: session || null, authChecked: true, authMsg: oauthErr ? 'Sign-in failed: ' + oauthErr.replace(/\+/g, ' ') : '' });
-      this.sb.auth.onAuthStateChange((_e, s) => { this.setState({ session: s || null }); if (s) this.loadLive(); else this.setState({ live: null }); });
+      this.sb.auth.onAuthStateChange((_e, s) => { this.setState({ session: s || null }); if (s) this.loadLive(); else { this.locStop(false); this.setState({ live: null }); } });
       if (session) await this.loadLive();
     } catch (e) { this.setState({ authChecked: true, authMsg: 'Could not reach Supabase: ' + e.message }); }
   }
@@ -933,7 +960,42 @@ class Component extends DCLogic {
       };
       this.setState({ live, apps: live.apps, liveBusy: false, authMsg: '' });
       this.loadHealth();
+      this.loadVisits();
+      if (localStorage.getItem('akatsuki_loc_on') !== '0') this.locStart();
     } catch (e) { this.setState({ liveBusy: false, authMsg: 'Load failed: ' + e.message }); }
+  }
+  // ---- Location (R033): the hub records visits itself while open; on by default, off is remembered per install ----
+  locH = null;
+  async locStart() {
+    if (!this.sb || this.locH) return;
+    const { data: { session } } = await this.sb.auth.getSession();
+    if (!session || this.locH) return;
+    if (!window.AkatsukiLocation || !('geolocation' in navigator)) { this.setState({ loc: 'unsupported' }); return; }
+    localStorage.setItem('akatsuki_loc_on', '1');
+    this.locH = window.AkatsukiLocation.start(this.sb, 'akatsuki', {
+      onVisitOpen: () => this.loadVisits(), onVisitClose: () => this.loadVisits(),
+      onError: (fn, e) => {
+        if (fn === 'watchPosition' && e && e.code === 1) { this.locStop(true); this.setState({ loc: 'denied' }); }
+        else this.setState({ locErr: fn + ' ' + ((e && (e.code || e.message)) || '') });
+      }
+    });
+    this.setState({ loc: 'on', locErr: '' });
+    clearInterval(this._lv); this._lv = setInterval(() => this.loadVisits(), 60000);
+    clearInterval(this._lt); this._lt = setInterval(() => this.forceUpdate(), 10000);
+  }
+  locStop(user) {
+    if (this.locH) this.locH.stop();
+    this.locH = null; clearInterval(this._lv); clearInterval(this._lt);
+    if (user) localStorage.setItem('akatsuki_loc_on', '0');
+    this.setState({ loc: 'off' });
+  }
+  async loadVisits() {
+    if (!this.sb || !this.state.session) return;
+    const [v, n] = await Promise.all([
+      this.sb.from('akatsuki_visits_recent').select('*').order('since', { ascending: false }).limit(8),
+      this.sb.from('akatsuki_where_now').select('*')
+    ]);
+    this.setState({ visits: v.error ? null : v.data, visitsErr: v.error ? v.error.message : '', whereNow: n.error ? [] : n.data });
   }
   async sendLink() {
     const email = (this.state.authEmail || '').trim(); if (!this.sb || !email) return;
@@ -986,7 +1048,7 @@ class Component extends DCLogic {
     window.addEventListener('resize', this.onResize); document.addEventListener('keydown', this.onKey);
     this.initLive();
   }
-  componentWillUnmount() { window.removeEventListener('resize', this.onResize); document.removeEventListener('keydown', this.onKey); }
+  componentWillUnmount() { window.removeEventListener('resize', this.onResize); document.removeEventListener('keydown', this.onKey); if (this.locH) this.locH.stop(); clearInterval(this._lv); clearInterval(this._lt); }
   componentDidUpdate(prev) { if (prev.viewAs !== this.props.viewAs) this.setState({ viewAs: this.props.viewAs || 'attacker' }); }
 
   sq(name) { return this.SQUADS.find(s => s.name === name); }
@@ -1292,7 +1354,40 @@ class Component extends DCLogic {
         age: ago(v.at), border: rank <= 1 ? 'rgba(239,68,68,.4)' : 'var(--border-color)', resolve: () => this.resolveFinding(v.seq) };
     }).sort((x, y) => x.rank - y.rank || y.seq - x.seq);
 
+    const LS = S.loc || 'off';
+    const hm = (t) => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const placeOf = (v) => v.place_label || v.anchor_label || 'Unnamed spot';
+    const myNow = (S.whereNow || []).find(w => this.locH && w.device === this.locH.device) || (S.whereNow || [])[0];
+    const today = new Date().toDateString();
+    const locVisits = (S.visits || []).map(v => {
+      const m = Math.max(1, Math.round(((v.until ? Date.parse(v.until) : Date.now()) - Date.parse(v.since)) / 60000));
+      const day = new Date(v.since).toDateString() === today ? '' : new Date(v.since).toLocaleDateString([], { weekday: 'short', day: 'numeric' }) + ' ';
+      return { place: placeOf(v), dur: (v.until ? '' : 'now · ') + (m < 60 ? m + ' min' : Math.floor(m / 60) + ' h ' + String(m % 60).padStart(2, '0')),
+        color: v.until ? 'var(--text-secondary)' : '#22c55e',
+        when: day + hm(v.since) + '–' + (v.until ? hm(v.until) : 'now') + (v.end_reason === 'gap' ? ' (signal lost)' : ''),
+        from: v.source_app === 'akatsuki' ? 'recorded here' : 'via ' + v.source_app };
+    });
+    const ds = this.locH ? this.locH.state() : null;
+    const maxAcc = ds ? ds.cfg.accuracy_max_m : 150;
+    const fixText = !ds ? '' : ds.fixAcc == null ? 'No GPS fix yet.'
+      : `GPS ±${ds.fixAcc} m, ${ds.fixAge}s ago` + (ds.fixAcc > maxAcc ? ` — too rough (needs ≤${maxAcc} m), ignored.` : ds.anchorSince ? ` · still here since ${hm(ds.anchorSince)}.` : '.');
+    const locVals = {
+      locLabel: { off: 'Off', on: 'Recording', denied: 'Blocked', unsupported: 'Not available' }[LS],
+      locColor: LS === 'on' ? '#22c55e' : LS === 'denied' ? '#ef4444' : '#8888aa',
+      locNote: !S.session ? 'Sign in to record location.'
+        : LS === 'denied' ? 'Location is blocked for Akatsuki. Allow it in the site settings, then turn it on.'
+        : LS === 'unsupported' ? 'This browser has no location.'
+        : LS === 'on' ? (myNow ? `At ${placeOf(myNow)} since ${hm(myNow.since)}.` : 'No visit yet. One opens after 4 minutes in one spot.') + ' ' + fixText + (S.locErr ? ' Last error: ' + S.locErr : '')
+        : 'Off on this device. Turn on to record visits.',
+      locCanToggle: !!S.session && LS !== 'unsupported',
+      locButton: LS === 'on' ? 'Turn off' : 'Turn on',
+      locToggle: () => LS === 'on' ? this.locStop(true) : this.locStart(),
+      locVisits, locVisitsEmpty: !!S.session && locVisits.length === 0,
+      locVisitsEmptyText: S.visitsErr ? 'Could not read visits: ' + S.visitsErr : S.visits ? 'No visits in the last 30 days.' : 'Loading…'
+    };
+
     return {
+      ...locVals,
       isHub, goHub: () => this.setState({ view: 'hub' }),
       composeClaim: S.compose && !isHub, composeHub: S.compose && isHub,
       hubApps, hubLinks, hubVocab, hubSources, hubCreds, regIsApi: reg.role === 'api',

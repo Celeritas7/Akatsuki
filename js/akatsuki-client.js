@@ -155,6 +155,22 @@
       /** Retire (never deleted; old tasks still resolve). */
       retirePlace(id) { return rpc('akatsuki_place_retire', { p_id: id, p_app: app }); },
 
+      /* ── Location (R018 · R033).  Read-only.  Visits only, never coordinates (the waist). ── */
+      /** Where the user is now, newest first: [{ device, since, last_seen_at, place_id, place_label, anchor_label, class }].
+       *  Empty when nothing is recording — that means "unknown", not "away". */
+      async whereNow() {
+        const { data, error } = await supabase.from('akatsuki_where_now').select('*').order('last_seen_at', { ascending: false });
+        if (error) throw new Error(error.message);
+        return data || [];
+      },
+      /** Visits in the last `days` (max 30), newest first: [{ since, until, end_reason, place_id, place_label, anchor_label, class, source_app }]. until = null → still there. */
+      async visits({ days = 7 } = {}) {
+        const from = new Date(Date.now() - Math.min(days, 30) * 864e5).toISOString();
+        const { data, error } = await supabase.from('akatsuki_visits_recent').select('*').gte('since', from).order('since', { ascending: false });
+        if (error) throw new Error(error.message);
+        return data || [];
+      },
+
       /** Read a whole doc re-grouped by path: { cycles: [...], away: [...], show: true } */
       async doc(doc) {
         const { data, error } = await supabase.from('akatsuki_docs').select('path,owner_app,items,scalar,seq').eq('doc', doc);
