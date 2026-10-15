@@ -610,6 +610,42 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') addEventListe
               <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Button" size="sm" accent="review" on-click="{{ locToggle }}" hint-size="auto,44px">{{ locButton }}</x-import>
             </sc-if>
           </div>
+          <sc-if value="{{ nameShow }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex; flex-direction:column; gap:12px; padding:14px 16px; border-radius:var(--radius-xl); background:var(--bg-card); border:1px solid #f9731666">
+              <div style="display:flex; align-items:baseline; justify-content:space-between; gap:6px 12px; flex-wrap:wrap">
+                <span style="font-weight:600">{{ nameTitle }}</span>
+                <span style="font-size:.8rem; color:var(--text-secondary)">{{ nameSub }}</span>
+              </div>
+              <div style="display:flex; flex-wrap:wrap; gap:8px">
+                <sc-for list="{{ namePlaces }}" as="np" hint-placeholder-count="4">
+                  <button onClick="{{ np.pick }}" disabled="{{ nameBusy }}" style="display:flex; align-items:baseline; gap:6px; min-height:44px; padding:8px 14px; border-radius:999px; background:var(--bg-secondary); border:1px solid {{ np.border }}; color:var(--text-primary); font:inherit; font-size:.9rem; cursor:pointer" style-hover="border-color:#f97316">{{ np.label }}<span style="font-size:.72rem; color:var(--text-muted)">{{ np.cls }}</span></button>
+                </sc-for>
+              </div>
+              <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center">
+                <input type="text" placeholder="New place, e.g. Home" value="{{ nameLabel }}" onChange="{{ setNameLabel }}" onKeyDown="{{ nameKey }}" style="flex:1 1 180px; min-width:0; min-height:44px; box-sizing:border-box; background:var(--bg-secondary); border:1px solid var(--border-color); color:var(--text-primary); border-radius:10px; padding:10px 12px; font:inherit">
+                <select value="{{ nameClass }}" onChange="{{ setNameClass }}" style="min-height:44px; background:var(--bg-secondary); border:1px solid var(--border-color); color:var(--text-primary); border-radius:10px; padding:10px 12px; font:inherit">
+                  <sc-for list="{{ nameClasses }}" as="nc" hint-placeholder-count="5"><option value="{{ nc.v }}">{{ nc.v }}</option></sc-for>
+                </select>
+                <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Button" size="sm" accent="review" on-click="{{ nameSave }}" hint-size="auto,44px">Save here</x-import>
+                <sc-if value="{{ nameOpen }}" hint-placeholder-val="{{ false }}">
+                  <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Button" size="sm" variant="ghost" on-click="{{ nameCancel }}" hint-size="auto,44px">Cancel</x-import>
+                </sc-if>
+              </div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ nameHasMsg }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; padding:0 4px">
+              <span style="font-size:.85rem; color: {{ nameMsgColor }}; text-wrap:pretty">{{ nameMsg }}</span>
+              <sc-if value="{{ nameCanMove }}" hint-placeholder-val="{{ false }}">
+                <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Button" size="sm" variant="secondary" on-click="{{ nameMove }}" hint-size="auto,44px">Move it here</x-import>
+              </sc-if>
+            </div>
+          </sc-if>
+          <sc-if value="{{ nameRenameShow }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex; justify-content:flex-end">
+              <x-import component-from-global-scope="ScripturaDesignSystem_72b484.Button" size="sm" variant="ghost" on-click="{{ nameReopen }}" hint-size="auto,44px">Wrong place? Rename this spot</x-import>
+            </div>
+          </sc-if>
           <sc-if value="{{ locVisitsEmpty }}" hint-placeholder-val="{{ false }}">
             <div style="padding:12px 16px; border-radius:var(--radius-xl); background:var(--bg-card); border:1px solid var(--border-color); font-size:.9rem; color:var(--text-secondary)">{{ locVisitsEmptyText }}</div>
           </sc-if>
@@ -991,11 +1027,33 @@ class Component extends DCLogic {
   }
   async loadVisits() {
     if (!this.sb || !this.state.session) return;
-    const [v, n] = await Promise.all([
+    const [v, n, p, c] = await Promise.all([
       this.sb.from('akatsuki_visits_recent').select('*').order('since', { ascending: false }).limit(8),
-      this.sb.from('akatsuki_where_now').select('*')
+      this.sb.from('akatsuki_where_now').select('*'),
+      this.sb.from('akatsuki_places').select('id,label,class').is('retired_at', null).order('ord').order('label'),
+      this.sb.from('akatsuki_vocab').select('schema').eq('ns', 'enum').eq('id', 'place_class').maybeSingle()
     ]);
-    this.setState({ visits: v.error ? null : v.data, visitsErr: v.error ? v.error.message : '', whereNow: n.error ? [] : n.data });
+    this.setState({ visits: v.error ? null : v.data, visitsErr: v.error ? v.error.message : '', whereNow: n.error ? [] : n.data,
+      places: p.error ? [] : p.data, placeClasses: (c.data && c.data.schema && c.data.schema.values) || ['out'] });
+  }
+  // R035: name the spot of the current visit. Sends the visit key only — the hub owns the coordinates.
+  async placeHere(placeId, move) {
+    const w = this._myNow, S = this.state; if (!w || S.nameBusy) return;
+    const label = placeId ? null : (S.nameLabel || '').trim();
+    if (!placeId && !label) { this.setState({ nameMsg: 'Type a name, or pick a place above.', nameErr: true, nameFar: null }); return; }
+    this.setState({ nameBusy: true, nameMsg: '', nameFar: null });
+    const { data, error } = await this.sb.rpc('akatsuki_place_here', { p_device: w.device, p_since: w.since, p_place_id: placeId || null,
+      p_label: label, p_class: placeId ? null : (S.nameClass || 'home'), p_move: !!move, p_app: 'akatsuki' });
+    if (error) {
+      const far = error.code === 'AK116';
+      this.setState({ nameBusy: false, nameErr: true, nameFar: far ? { placeId } : null,
+        nameMsg: far ? error.message + '. Move it here?' : 'Could not save: ' + error.message });
+      return;
+    }
+    const r = (data || [])[0] || {};
+    this.setState({ nameBusy: false, nameErr: false, nameOpen: false, nameLabel: '', nameFar: null,
+      nameMsg: `Here is ${r.label} (${r.class})` + (r.status === 'moved' ? ', moved' : '') + ` · ${r.renamed} visit${r.renamed === 1 ? '' : 's'} labelled.` });
+    this.loadVisits();
   }
   async sendLink() {
     const email = (this.state.authEmail || '').trim(); if (!this.sb || !email) return;
@@ -1385,9 +1443,29 @@ class Component extends DCLogic {
       locVisits, locVisitsEmpty: !!S.session && locVisits.length === 0,
       locVisitsEmptyText: S.visitsErr ? 'Could not read visits: ' + S.visitsErr : S.visits ? 'No visits in the last 30 days.' : 'Loading…'
     };
+    this._myNow = myNow;
+    const nameVals = {
+      nameShow: !!S.session && !!myNow && (!myNow.place_id || !!S.nameOpen),
+      nameRenameShow: !!S.session && !!myNow && !!myNow.place_id && !S.nameOpen,
+      nameOpen: !!S.nameOpen, nameBusy: !!S.nameBusy,
+      nameTitle: !myNow ? '' : myNow.place_id ? `Rename this spot (now ${placeOf(myNow)})` : 'Name this spot',
+      nameSub: !myNow ? '' : `here since ${hm(myNow.since)} · ${String(myNow.device).startsWith('ot:') ? 'phone (OwnTracks)' : this.locH && myNow.device === this.locH.device ? 'this device' : 'another device'}`,
+      namePlaces: (S.places || []).map(p => ({ label: p.label, cls: p.class, pick: () => this.placeHere(p.id),
+        border: myNow && p.id === myNow.place_id ? '#f97316' : 'var(--border-color)' })),
+      nameClasses: (S.placeClasses || ['home', 'office', 'transit', 'cafe', 'out']).map(v => ({ v })),
+      nameLabel: S.nameLabel || '', nameClass: S.nameClass || 'home',
+      setNameLabel: (e) => this.setState({ nameLabel: e.target.value }),
+      setNameClass: (e) => this.setState({ nameClass: e.target.value }),
+      nameKey: (e) => { if (e.key === 'Enter') this.placeHere(null); },
+      nameSave: () => this.placeHere(null),
+      nameCancel: () => this.setState({ nameOpen: false, nameMsg: '', nameFar: null }),
+      nameReopen: () => this.setState({ nameOpen: true, nameMsg: '' }),
+      nameHasMsg: !!S.nameMsg, nameMsg: S.nameMsg || '', nameMsgColor: S.nameErr ? '#ef4444' : '#22c55e',
+      nameCanMove: !!S.nameFar, nameMove: () => S.nameFar && this.placeHere(S.nameFar.placeId, true)
+    };
 
     return {
-      ...locVals,
+      ...locVals, ...nameVals,
       isHub, goHub: () => this.setState({ view: 'hub' }),
       composeClaim: S.compose && !isHub, composeHub: S.compose && isHub,
       hubApps, hubLinks, hubVocab, hubSources, hubCreds, regIsApi: reg.role === 'api',
