@@ -269,7 +269,22 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') addEventListe
                 <option value="no">Not yet</option>
               </select>
             </label>
+            <label style="display:flex; flex-direction:column; gap:6px; font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-secondary); font-weight:600">Writes
+              <select value="{{ reg.writes }}" onChange="{{ setReg.writes }}" style="background:var(--bg-secondary); border:1px solid var(--border-color); color:var(--text-primary); border-radius:10px; padding:10px 12px; font-size:.95rem; min-height:44px; letter-spacing:0; text-transform:none">
+                <option value="record">One record per row</option>
+                <option value="document">Whole document · one blob</option>
+              </select>
+            </label>
+            <label style="display:flex; flex-direction:column; gap:6px; font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-secondary); font-weight:600">Health
+              <input type="text" placeholder="view:akatsuki_x · report · none" value="{{ reg.health }}" onChange="{{ setReg.health }}" style="background:var(--bg-secondary); border:1px solid var(--border-color); color:var(--text-primary); border-radius:10px; padding:10px 12px; font-size:.95rem; min-height:44px; letter-spacing:0; text-transform:none; font-family:ui-monospace, Menlo, monospace">
+            </label>
+            <label style="display:flex; flex-direction:column; gap:6px; font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-secondary); font-weight:600">Backup
+              <input type="text" placeholder="hub:akatsuki_x · app:history table · none" value="{{ reg.backup }}" onChange="{{ setReg.backup }}" style="background:var(--bg-secondary); border:1px solid var(--border-color); color:var(--text-primary); border-radius:10px; padding:10px 12px; font-size:.95rem; min-height:44px; letter-spacing:0; text-transform:none; font-family:ui-monospace, Menlo, monospace">
+            </label>
           </div>
+          <sc-if value="{{ regBlocked }}" hint-placeholder-val="{{ false }}">
+            <div role="alert" style="display:flex; gap:8px; padding:12px 14px; border-radius:var(--radius-xl); background:rgba(239,68,68,.08); border:1px solid rgba(239,68,68,.45); font-size:.85rem; color:#fca5a5; line-height:1.45"><span style="color:#ef4444; flex:none">▲</span><span style="text-wrap:pretty">Whole document with no backup can't be filed: one stale copy overwrites every record, and nothing can bring them back. Split it into one row per record, or name a backup.</span></div>
+          </sc-if>
           <sc-if value="{{ regIsApi }}" hint-placeholder-val="{{ false }}">
             <div style="display:flex; flex-direction:column; gap:12px; padding:16px; border-radius:var(--radius-xl); background:rgba(139,92,246,.06); border:1px solid rgba(139,92,246,.3)">
               <span style="font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:#c4b5fd; font-weight:600">Source only · fetch and cache, never passthrough</span>
@@ -686,7 +701,7 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') addEventListe
         <div style="display:flex; flex-direction:column; gap:14px">
           <div style="display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap">
             <span style="font-size:.75rem; letter-spacing:1.5px; text-transform:uppercase; color:#f97316; font-weight:600">Registry · one card per app</span>
-            <span style="font-size:.85rem; color:var(--text-secondary); text-wrap:pretty">Six questions decide it: a stable address, a change signal, a known pattern, a payload map, owned paths, and reach. Pass all six and the app links to anything — even apps that don't exist yet.</span>
+            <span style="font-size:.85rem; color:var(--text-secondary); text-wrap:pretty">Eight questions decide it: a stable address, a change signal, a known pattern, a payload map, owned paths, reach, write granularity, and recovery. Pass all eight and the app links to anything — even apps that don't exist yet.</span>
           </div>
           <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap:14px">
             <sc-for list="{{ hubApps }}" as="h" hint-placeholder-count="7">
@@ -897,6 +912,7 @@ class Component extends DCLogic {
   HUB_APPS = [
     { id: 'wf', name: 'Weekly Focus', role: 'app', pattern: 'stream', address: '{board_id, item_key, sub_id} · base36 / djb2, not a uuid', clock: 'subtasks[].u · ms epoch', clockTrust: 'client', emits: 'task.upsert, note', accepts: 'task.upsert (v65, unbuilt)', deletes: 'soft', priv: 'when md urg dl loc tag lat latAt rv', owners: true, session: 'jwt',
       reach: 'browser · shared Supabase project · cloud only', payloadMap: 't→title · done→done · ctx[]→ctx[] · when→due', ownedPaths: 'subtasks[].t · done · ctx[] — private fields never written by anyone else',
+      writes: 'document', backup: 'none', health: 'view:akatsuki_task_tags',
       flags: ['del / lat flip without bumping u — park and delete are invisible incrementally', 'every write is a whole-array read-modify-write; never drop tombstones'] },
     { id: 'rm', name: 'Roadmap', role: 'app', pattern: 'stream', address: '{id} · uuid', clock: 'updated_at', clockTrust: 'trigger', emits: 'task.upsert', accepts: 'task.upsert', deletes: 'hard', priv: 'folder, road, project', owners: true, session: 'jwt',
       reach: 'browser · shared Supabase project · cloud only', payloadMap: 'title→title · done→done · ctx[]→ctx[] — folder / road stay private', ownedPaths: 'roadmap_tasks.* — whole row, single owner',
@@ -911,7 +927,7 @@ class Component extends DCLogic {
       reach: 'separate project · paste-JSON fallback across origins', payloadMap: 'items[].yen→amount · currency→JPY fixed · status→reply.status', ownedPaths: 'reply.status only — never reorders or deletes the request',
       flags: ['no change signal — origin re-reads on focus and every 15 s'] },
     { id: 'travel', name: 'Travel Plan', role: 'app', pattern: 'stream', address: '{trip_id, segment_id}', clock: '', clockTrust: 'unknown', emits: 'trip.segment', accepts: '—', deletes: 'hard', priv: '—', owners: false, session: 'unknown',
-      reach: '', payloadMap: '', ownedPaths: '',
+      reach: '', payloadMap: '', ownedPaths: '', writes: '', backup: '', health: '',
       flags: ['card incomplete — clock, session, reach, payload map and owners not declared'] },
     { id: 'weather', name: 'Weather', role: 'app', pattern: 'stream', address: '{location, date}', clock: 'none · relays its source', clockTrust: 'none', emits: 'forecast', accepts: '—', deletes: 'never', priv: '—', owners: true, session: 'service',
       reach: 'server-side adapter · no client path', payloadMap: 'daily.code→condition · tmax→high_c · tmin→low_c · pop→rain_pct', ownedPaths: 'forecast.* — read-only relay, owns nothing',
@@ -986,7 +1002,7 @@ class Component extends DCLogic {
       const live = {
         apps: apps.data.map(a => ({ id: a.id, name: a.name, role: a.role, pattern: a.pattern, address: a.address_shape || '', clock: a.clock_field || '', clockTrust: a.clock_trust,
           emits: (a.emits || []).join(', '), accepts: (a.accepts || []).join(', '), deletes: a.deletes, priv: (a.private_fields || []).join(' '), owners: (a.owned_paths || []).length > 0,
-          session: a.session, reach: a.reach || '', payloadMap: pm(a.payload_map), ownedPaths: (a.owned_paths || []).join(' · '), flags: a.flags || [] })),
+          session: a.session, reach: a.reach || '', payloadMap: pm(a.payload_map), ownedPaths: (a.owned_paths || []).join(' · '), flags: a.flags || [], writes: a.writes || '', health: a.health || '', backup: a.backup || '' })),
         links: routes.data.map(r => ({ from: r.from_app, to: r.to_app, kind: r.kind, access: r.access, state: r.state === 'retired' ? 'proposed' : r.state, note: (r.kind + (r.note ? ' — ' + r.note : '')),
           pattern: (apps.data.find(a => a.id === r.from_app) || {}).pattern || 'stream' })),
         sources: sources.data.map(s => ({ id: s.id, name: s.name, kind: s.kind || 'Source', endpoint: s.endpoint, credential: s.credential, fetchPolicy: s.fetch_policy || '—', quota: s.quota || '—', emits: s.emits,
@@ -1066,12 +1082,13 @@ class Component extends DCLogic {
     const map = Object.fromEntries(split(card.payloadMap).map(p => p.split('→').map(x => x.trim())).filter(p => p.length === 2));
     const row = { id: card.id, name: card.name, role: card.role || 'app', pattern: card.pattern, address_shape: card.address || null, clock_field: card.clock || null, clock_trust: card.clockTrust || 'unknown',
       emits: split(card.emits), accepts: split(card.accepts), deletes: card.deletes || null, private_fields: split(card.priv), session: card.session || 'unknown', reach: card.reach || null,
-      payload_map: map, owned_paths: split(card.ownedPaths), flags: card.flags || [] };
+      payload_map: map, owned_paths: split(card.ownedPaths), flags: card.flags || [],
+      writes: card.role === 'api' ? null : (card.writes || null), health: card.health || null, backup: card.backup || null };
     const { error } = await this.sb.from('akatsuki_apps').upsert(row, { onConflict: 'user_id,id' });
     if (error) { this.setState({ authMsg: 'Save failed: ' + error.message }); return false; }
     await this.loadLive(); return true;
   }
-  REG0 = { id: '', name: '', role: 'app', pattern: 'stream', session: 'jwt', address: '', clock: '', clockTrust: 'trigger', deletes: 'soft', emits: '', accepts: '', priv: '', owners: 'yes', reach: '', payloadMap: '', ownedPaths: '', endpoint: '', credential: '', fetchPolicy: '', quota: '' };
+  REG0 = { id: '', name: '', role: 'app', pattern: 'stream', session: 'jwt', address: '', clock: '', clockTrust: 'trigger', deletes: 'soft', emits: '', accepts: '', priv: '', owners: 'yes', reach: '', writes: 'record', health: '', backup: '', payloadMap: '', ownedPaths: '', endpoint: '', credential: '', fetchPolicy: '', quota: '' };
 
   state = {
     view: 'channel', viewAs: null, compose: false, flare: false, board: 'weekday',
@@ -1133,7 +1150,7 @@ class Component extends DCLogic {
   resolve(id, status, how, fn) {
     this.setState(s => ({ challengers: s.challengers.map(c => c.id === id ? { ...c, status, how } : c) }), () => fn && fn());
   }
-  // the six questions
+  // the eight questions
   judge(a) {
     const OK = '#22c55e', WARN = '#f59e0b', BAD = '#ef4444';
     const api = a.role === 'api';
@@ -1148,6 +1165,13 @@ class Component extends DCLogic {
       { k: 'Owners', color: api ? OK : (a.owners && a.ownedPaths ? OK : BAD), hint: api ? 'read-only source — owns nothing, so nothing to contest' : (a.owners && a.ownedPaths ? 'every shared path has exactly one owner' : 'ownership undeclared — a boolean cannot enforce anything') },
       { k: 'Reach', color: reach[0], hint: reach[1] }
     ];
+    if (!api) {
+      const doc = a.writes === 'document', none = !a.backup || /^none/i.test(a.backup);
+      checks.push({ k: 'Writes', color: a.writes === 'record' ? OK : doc ? (none ? BAD : WARN) : WARN,
+        hint: a.writes === 'record' ? 'one record per row — a save touches only what changed' : doc ? (none ? 'whole document and no backup — one stale copy erases every record, for good' : 'whole-document writes — a stale copy overwrites everything; the backup is the only way back') : 'write granularity not declared — refile the card' });
+      checks.push({ k: 'Recover', color: !a.backup ? WARN : none ? (doc ? BAD : WARN) : OK,
+        hint: !a.backup ? 'backup not declared — refile the card' : none ? 'no backup — a lost record stays lost' : 'restorable from ' + a.backup });
+    }
     if (api) checks.push({ k: 'Secret', color: !a.credential ? OK : /vault|server/.test(a.secret || '') ? OK : BAD, hint: !a.credential ? 'no key required' : /vault|server/.test(a.secret || '') ? 'resolved server-side — one credential, many consumers' : 'key would ship in a client bundle' });
     const bad = checks.some(c => c.color === BAD), warn = checks.some(c => c.color === WARN);
     const verdict = bad ? 'not ready' : warn ? 'linkable · with cost' : 'linkable';
@@ -1344,7 +1368,11 @@ class Component extends DCLogic {
           ['Deletes', this.DELETES[a.deletes] || a.deletes],
           ['Private', a.priv || '—', MONO],
           ['Session', this.SESSION[a.session] || a.session, 'inherit', a.session === 'unknown'],
-          ['Reach', a.reach || 'not declared', 'inherit', !a.reach]
+          ['Reach', a.reach || 'not declared', 'inherit', !a.reach],
+          ...(a.role === 'api' ? [] : [
+            ['Writes', a.writes === 'record' ? 'One record per row' : a.writes === 'document' ? 'Whole document · one blob' : 'not declared', 'inherit', a.writes !== 'record' && a.writes !== 'document'],
+            ['Health', a.health || 'not declared', MONO, !a.health],
+            ['Backup', a.backup || 'not declared', MONO, !a.backup]])
         ].map(([k, v, font, missing]) => ({ k, v, font: font || 'inherit', size: font === MONO ? '.8rem' : '.85rem', color: missing ? '#f87171' : 'var(--text-primary)' })),
         flags: (a.flags || []).map(text => ({ text })), hasFlags: (a.flags || []).length > 0 };
     });
@@ -1383,14 +1411,17 @@ class Component extends DCLogic {
       consumers: c.consumers.map(x => ({ name: nameOf(x) })), risk: c.risk || '' }));
 
     const regJ = this.judge({ ...reg, owners: reg.owners === 'yes', secret: 'vault', clockTrust: reg.role === 'api' ? 'none' : reg.clockTrust, clock: reg.role === 'api' ? (reg.clock || 'none · fetch on policy') : reg.clock, reach: reg.role === 'api' ? (reg.reach || 'server-side adapter · no client path') : reg.reach });
-    const regVerdictText = !reg.id || !reg.name ? 'Give the app an id and a name.' : regJ.verdict === 'not ready' ? 'Not ready: ' + regJ.checks.filter(c => c.color === '#ef4444').map(c => c.k.toLowerCase()).join(', ') + ' missing.' : regJ.verdict === 'linkable' ? 'Passes all four. Linkable to anything.' : 'Linkable, with cost: ' + regJ.checks.find(c => c.color === '#f59e0b').hint + '.';
+    const regVerdictText = !reg.id || !reg.name ? 'Give the app an id and a name.' : reg.role !== 'api' && reg.writes === 'document' && (!reg.backup || /^none/i.test(reg.backup)) ? 'Not ready: whole document with no backup.' : regJ.verdict === 'not ready' ? 'Not ready: ' + regJ.checks.filter(c => c.color === '#ef4444').map(c => c.k.toLowerCase()).join(', ') + ' missing.' : regJ.verdict === 'linkable' ? 'Passes all eight. Linkable to anything.' : 'Linkable, with cost: ' + regJ.checks.find(c => c.color === '#f59e0b').hint + '.';
     const setReg = Object.fromEntries(Object.keys(this.REG0).map(k => [k, (e) => this.setState(s => ({ reg: { ...(s.reg || this.REG0), [k]: e.target.value } }))]));
+    const regBlocked = reg.role !== 'api' && reg.writes === 'document' && (!reg.backup || /^none/i.test(reg.backup));
     const submitReg = () => {
-      if (!reg.id || !reg.name) return;
+      if (!reg.id || !reg.name || regBlocked) return;
+      const rid = reg.id.trim().toLowerCase();
+      if (apps.some(a => a.id === rid) && !window.confirm(`A card for "${rid}" is already filed. Replace it with this one?`)) return;
       const card = { ...reg, id: reg.id.trim().toLowerCase(), owners: reg.owners === 'yes', flags: regJ.verdict === 'not ready' ? ['card incomplete — ' + regJ.checks.filter(c => c.color === '#ef4444').map(c => c.k.toLowerCase()).join(', ') + ' not declared'] : [] };
       this.setState(s => ({ apps: [...(s.apps || this.HUB_APPS).filter(a => a.id !== card.id), card], reg: this.REG0, compose: false }));
       this.saveCard(card);
-      this.addPost({ squad: 'Executive', kind: 'Registration', text: `${card.name} filed a card. Judged ${regJ.verdict}.`, sub: regJ.verdict === 'linkable' ? 'Passes all four questions.' : regJ.checks.filter(c => c.color !== '#22c55e').map(c => c.k + ': ' + c.hint).join(' · ') }, regJ.verdict !== 'linkable');
+      this.addPost({ squad: 'Executive', kind: 'Registration', text: `${card.name} filed a card. Judged ${regJ.verdict}.`, sub: regJ.verdict === 'linkable' ? 'Passes all eight questions.' : regJ.checks.filter(c => c.color !== '#22c55e').map(c => c.k + ': ' + c.hint).join(' · ') }, regJ.verdict !== 'linkable');
     };
     const verdicts = hubApps.map(h => h.verdict);
     const SEV = { critical: [0, '#ef4444'], high: [1, '#f97316'], medium: [2, '#d97706'], low: [3, '#6b6b85'] };
@@ -1468,7 +1499,7 @@ class Component extends DCLogic {
       ...locVals, ...nameVals,
       isHub, goHub: () => this.setState({ view: 'hub' }),
       composeClaim: S.compose && !isHub, composeHub: S.compose && isHub,
-      hubApps, hubLinks, hubVocab, hubSources, hubCreds, regIsApi: reg.role === 'api',
+      hubApps, hubLinks, hubVocab, hubSources, hubCreds, regIsApi: reg.role === 'api', regBlocked,
       reg, setReg, submitReg, regVerdictText, regVerdictColor: !reg.id || !reg.name ? 'var(--text-muted)' : regJ.color,
       hubRegistered: apps.length, hubLinkable: verdicts.filter(v => v === 'linkable').length, hubCost: verdicts.filter(v => v === 'linkable · with cost').length, hubNotReady: verdicts.filter(v => v === 'not ready').length,
       hubLive: linkRows.filter(l => l.state === 'live' || l.state === 'defect').length, hubSourceCount: srcRows.length,
