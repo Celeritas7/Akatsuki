@@ -13,7 +13,14 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } });
-const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { 'Content-Type': 'application/json' } });
+// CORS: browsers send a preflight OPTIONS without the JWT; the gateway lets it through to us.  The bearer JWT
+// on the POST is the gate, not the origin (same rule as akatsuki-places-nearby).
+const CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-akatsuki-app',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { ...CORS, 'Content-Type': 'application/json' } });
 const BUCKET = 'akatsuki-logos';
 const HOST = 'celeritas7.github.io';
 const MAX_PAGE = 1 << 20, MAX_IMAGE = 512 << 10, MAX_STORED = 64 << 10, USER_CAP = 40;
@@ -125,6 +132,7 @@ async function syncRow(row: any, force: boolean): Promise<string> {
 }
 
 Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { status: 200, headers: CORS });
   if (req.method !== 'POST') return json({ error: 'POST only' }, 405);
   const c = claims(req);   // the gateway (Verify JWT on) has checked the signature
   let userId: string | null = null;
