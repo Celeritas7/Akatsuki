@@ -75,8 +75,8 @@ function parse_(msg, isBackfill) {
   if (total == null) return null;
   return { kind: 'purchase.detected', payload: {
     source: 'amazon', order_id: id, ordered_at: at, total, currency: 'JPY',
-    email_id: msg.getId(), backfill: isBackfill || undefined,
-  } };   // items omitted: Amazon's item lines are not reliably parseable; Cost lets you edit on Log
+    items: itemsOf_(text), email_id: msg.getId(), backfill: isBackfill || undefined,
+  } };
 }
 
 // Total, two layouts:
@@ -96,6 +96,30 @@ function totalOf_(text) {
     }
   }
   return null;
+}
+
+// Items, Amazon.co.jp English layout (2026):
+//   * <item name>
+//   Quantity: <n>
+//   <amount> JPY          ← the amount Amazon shows for that line
+// Returns [] when the layout isn't there; the order still goes through with its total.
+const ITEM_START = /^\*\s+(.+)$/;
+const QTY_LINE = /^(?:Quantity|数量)\s*[:：]\s*(\d+)/i;
+function itemsOf_(text) {
+  const lines = text.split('\n').map(s => s.trim()).filter(Boolean);
+  const items = [];
+  for (let i = 0; i < lines.length && items.length < 30; i++) {
+    const m = lines[i].match(ITEM_START);
+    if (!m) continue;
+    const it = { name: m[1].slice(0, 60) };
+    for (const next of lines.slice(i + 1, i + 4)) {
+      if (ITEM_START.test(next) || TOTAL_LABEL.test(next)) break;
+      const q = next.match(QTY_LINE); if (q) { it.qty = Number(q[1]); continue; }
+      const a = next.match(AMOUNT_LINE); if (a && it.price == null) it.price = Number(a[1].replace(/,/g, ''));
+    }
+    items.push(it);
+  }
+  return items.length ? items : undefined;
 }
 
 function label_(name) { return GmailApp.getUserLabelByName(name) || GmailApp.createLabel(name); }
