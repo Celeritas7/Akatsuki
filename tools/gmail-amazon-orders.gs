@@ -22,6 +22,9 @@ const SENDERS = 'from:(auto-confirm@amazon.co.jp OR order-update@amazon.co.jp)';
 const LABEL_SENT = 'akatsuki/sent';
 const LABEL_BAD = 'akatsuki/unparsed';
 const PER_RUN = 50;
+// Emails never to send again, whatever their labels.  Gmail message ids.
+//   19f474bcfba05c44  order 249-5735958-9677403 (Jul 9): its extra lines were logged by hand on 2026-10-24.
+const DONE_EMAILS = ['19f474bcfba05c44'];
 
 const ORDER_ID = /\b(\d{3}-\d{7}-\d{7})\b/;
 const TOTAL = /(?:ご請求額|注文合計|合計|Order Total|Grand Total)[^\d¥￥]{0,20}[¥￥]\s?([\d,]+)/;
@@ -45,6 +48,7 @@ function process_(query, isBackfill, send) {
 
   for (const thread of GmailApp.search(query, 0, PER_RUN)) {
     for (const msg of thread.getMessages()) {
+      if (DONE_EMAILS.includes(msg.getId())) continue;
       const orders = parse_(msg, isBackfill);   // one email can hold several orders
       if (!send) { Logger.log(JSON.stringify(orders.length ? orders : { unparsed: msg.getSubject() })); continue; }
       if (!orders.length) { thread.addLabel(bad); continue; }
