@@ -1,5 +1,5 @@
 /**
- * Gmail → Akatsuki: Amazon.co.jp order emails become purchase.detected / purchase.cancelled for Cost.  R037
+ * Gmail → Akatsuki: Amazon.co.jp order emails become purchase.detected / purchase.cancelled for Cost.  R048 (was R037)
  *
  * Install (once, in your own Google account):
  *   1. script.google.com → New project → paste this file.

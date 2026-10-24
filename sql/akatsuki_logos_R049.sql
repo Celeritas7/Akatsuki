@@ -1,5 +1,6 @@
 -- ============================================================================
--- Akatsuki R038 — one shared place for every app's logo.  After R037.  Idempotent.
+-- Akatsuki R049 — one shared place for every app's logo.  After R048.  Idempotent.
+-- (Written as R038 in this branch; renumbered 2026-10-24.  Live strings may still say R038.)
 -- Project wylxvmkcrexwfpjpbhyy.  Source: WF's request + AKATSUKI-REPLY-wf-app-logos.md.
 --
 --   A. Bucket akatsuki-logos: public read by URL, png/webp, ≤ 64 KB.  Owner
@@ -22,7 +23,7 @@
 do $$
 begin
   if to_regprocedure('public.akatsuki_publish_ingest(text,jsonb)') is null then
-    raise exception 'akatsuki: run R037 first';
+    raise exception 'akatsuki: run R048 first';
   end if;
 end $$;
 

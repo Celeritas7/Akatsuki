@@ -1,4 +1,4 @@
-// akatsuki-mail — headless producer: purchases found in Gmail → Cost.  R037 · Oct 21
+// akatsuki-mail — headless producer: purchases found in Gmail → Cost.  R048 (was R037) · Oct 21
 // Deploy:  supabase functions deploy akatsuki-mail --no-verify-jwt
 //          (no Supabase JWT: Apps Script has none.  A scope='mail' token in akatsuki_ingest_tokens is the credential.)
 // Auth:    Authorization: Bearer <token>

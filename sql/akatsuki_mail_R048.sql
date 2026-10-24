@@ -1,5 +1,7 @@
 -- ============================================================================
--- Akatsuki R037 — mail joins the hub (Amazon orders → Cost), plus hardening.
+-- Akatsuki R048 — mail joins the hub (Amazon orders → Cost), plus hardening.
+-- (Written as R037 in this branch; renumbered 2026-10-24 — R037–R047 were already
+--  used by migrations run from the design chat.  Live strings may still say R037.)
 -- Project wylxvmkcrexwfpjpbhyy.  Run after the 2026-10-21 snapshot.  Idempotent.
 --
 -- Contract agreed with Cost (AKATSUKI-REPLY-cost-amazon-orders.md + reply 2;
@@ -44,7 +46,7 @@ end $$;
 
 
 -- ═══ B · scoped ingest tokens ══════════════════════════════════════════════
--- Before R037 any live token was accepted by akatsuki_ping, so a mail token
+-- Before this migration any live token was accepted by akatsuki_ping, so a mail token
 -- could have posted locations.  Existing tokens are OwnTracks tokens.
 alter table akatsuki_ingest_tokens add column if not exists scope text not null default 'owntracks';
 alter table akatsuki_ingest_tokens drop constraint if exists akatsuki_ingest_tokens_scope_check;

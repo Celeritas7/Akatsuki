@@ -1,4 +1,4 @@
-// akatsuki-logo-sync — copies each app's own icon from its GitHub Pages site into akatsuki-logos.  R038 · Oct 21
+// akatsuki-logo-sync — copies each app's own icon from its GitHub Pages site into akatsuki-logos.  R049 (was R038) · Oct 21
 // Deploy:  supabase functions deploy akatsuki-logo-sync        (Verify JWT on)
 // Callers: pg_cron (service role, every user's rows) · a signed-in app, e.g. WF after seeding (that user's rows only).
 // Body:    { app_keys?: string[], force?: boolean }
