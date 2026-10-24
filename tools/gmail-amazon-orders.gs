@@ -71,12 +71,45 @@ function parse_(msg, isBackfill) {
   if (CANCELLED.test(msg.getSubject())) {
     return { kind: 'purchase.cancelled', payload: { source: 'amazon', order_id: id, cancelled_at: at, email_id: msg.getId() } };
   }
-  const m = text.match(TOTAL);
-  if (!m) return null;
+  const total = totalOf_(text);
+  if (total == null) return null;
   return { kind: 'purchase.detected', payload: {
-    source: 'amazon', order_id: id, ordered_at: at, total: Number(m[1].replace(/,/g, '')), currency: 'JPY',
+    source: 'amazon', order_id: id, ordered_at: at, total, currency: 'JPY',
     email_id: msg.getId(), backfill: isBackfill || undefined,
   } };   // items omitted: Amazon's item lines are not reliably parseable; Cost lets you edit on Log
 }
 
+// Total, two layouts:
+//   one line   "Order Total: ￥1,234" / "ご請求額：￥1,234"
+//   two lines  "Total" then "1,234" / "￥1,234" / "1,234 JPY" (Amazon.co.jp English emails, 2026)
+const TOTAL_LABEL = /^(?:order\s+total|grand\s+total|total|ご請求額|注文合計|合計)\s*[:：]?$/i;
+const AMOUNT_LINE = /^(?:JPY|[¥￥])?\s*([\d,]+)(?:\.\d+)?\s*(?:JPY|円)?$/i;
+function totalOf_(text) {
+  const one = text.match(TOTAL);
+  if (one) return Number(one[1].replace(/,/g, ''));
+  const lines = text.split('\n').map(s => s.trim());
+  for (let i = 0; i < lines.length; i++) {
+    if (!TOTAL_LABEL.test(lines[i])) continue;
+    for (const next of lines.slice(i + 1, i + 4).filter(Boolean)) {
+      const m = next.match(AMOUNT_LINE);
+      if (m) return Number(m[1].replace(/,/g, ''));
+    }
+  }
+  return null;
+}
+
 function label_(name) { return GmailApp.getUserLabelByName(name) || GmailApp.createLabel(name); }
+
+// Diagnostic: shows how the newest Amazon email presents its order number and total.  Sends nothing.
+function debugLast() {
+  const t = GmailApp.search(`${SENDERS} newer_than:30d`, 0, 1)[0];
+  if (!t) return Logger.log('no Amazon email found');
+  const m = t.getMessages()[0], body = m.getPlainBody();
+  const id = (body.match(/\d{3}-\d{7}-\d{7}/) || [])[0];
+  Logger.log('subject: ' + m.getSubject());
+  Logger.log('order id found: ' + (id ? 'yes, ends ' + id.slice(-4) : 'NO'));
+  Logger.log('total read as: ' + totalOf_(m.getSubject() + '\n' + body));
+  const lines = body.split('\n').map(s => s.trim()).filter(Boolean);
+  const i = lines.findIndex(s => TOTAL_LABEL.test(s));
+  if (i >= 0) lines.slice(i, i + 4).forEach(s => Logger.log('> ' + s.slice(0, 120)));
+}
