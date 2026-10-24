@@ -45,38 +45,59 @@ function process_(query, isBackfill, send) {
 
   for (const thread of GmailApp.search(query, 0, PER_RUN)) {
     for (const msg of thread.getMessages()) {
-      const parsed = parse_(msg, isBackfill);
-      if (!send) { Logger.log(JSON.stringify(parsed || { unparsed: msg.getSubject() })); continue; }
-      if (!parsed) { thread.addLabel(bad); continue; }
-      const res = UrlFetchApp.fetch(url, {
-        method: 'post', contentType: 'application/json', muteHttpExceptions: true,
-        headers: { Authorization: 'Bearer ' + token }, payload: JSON.stringify(parsed),
-      });
-      const code = res.getResponseCode();
-      if (code === 401) throw new Error('Token rejected — mint a new one and update AKATSUKI_TOKEN');
-      if (code === 422) { Logger.log('rejected %s: %s', parsed.payload.order_id, res.getContentText()); thread.addLabel(bad); continue; }
-      if (code >= 300) { Logger.log('hub %s — retried next run', code); return; }   // leave unlabelled
-      n++;
+      const orders = parse_(msg, isBackfill);   // one email can hold several orders
+      if (!send) { Logger.log(JSON.stringify(orders.length ? orders : { unparsed: msg.getSubject() })); continue; }
+      if (!orders.length) { thread.addLabel(bad); continue; }
+      for (const parsed of orders) {
+        const res = UrlFetchApp.fetch(url, {
+          method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+          headers: { Authorization: 'Bearer ' + token }, payload: JSON.stringify(parsed),
+        });
+        const code = res.getResponseCode();
+        if (code === 401) throw new Error('Token rejected — mint a new one and update AKATSUKI_TOKEN');
+        if (code === 422) { Logger.log('rejected %s: %s', parsed.payload.order_id, res.getContentText()); thread.addLabel(bad); continue; }
+        if (code >= 300) { Logger.log('hub %s — retried next run', code); return; }   // leave unlabelled
+        n++;
+      }
     }
     if (send && !thread.getLabels().some(l => l.getName() === LABEL_BAD)) thread.addLabel(sent);
   }
   Logger.log('%s sent', n);
 }
 
+// Returns a list: one purchase.* per order in the email.  Amazon sometimes confirms several orders in one
+// email, each block starting with "Order #" and carrying its own items and Total.  Items are sent only when
+// they add up to that block's total; otherwise the order goes with its total alone (never a wrong split).
+const ORDER_LABEL = /^(?:order\s*#|注文番号)/i;
+function blocksOf_(text) {
+  const lines = text.split('\n');
+  const starts = lines.map((l, i) => (ORDER_LABEL.test(l.trim()) ? i : -1)).filter(i => i >= 0);
+  if (starts.length < 2) return [text];
+  return starts.map((st, k) => lines.slice(st, k + 1 < starts.length ? starts[k + 1] : lines.length).join('\n'));
+}
 function parse_(msg, isBackfill) {
   const text = msg.getSubject() + '\n' + msg.getPlainBody();
-  const id = (text.match(ORDER_ID) || [])[1];
-  if (!id) return null;
   const at = msg.getDate().toISOString();
   if (CANCELLED.test(msg.getSubject())) {
-    return { kind: 'purchase.cancelled', payload: { source: 'amazon', order_id: id, cancelled_at: at, email_id: msg.getId() } };
+    const id = (text.match(ORDER_ID) || [])[1];
+    return id ? [{ kind: 'purchase.cancelled', payload: { source: 'amazon', order_id: id, cancelled_at: at, email_id: msg.getId() } }] : [];
   }
-  const total = totalOf_(text);
-  if (total == null) return null;
-  return { kind: 'purchase.detected', payload: {
-    source: 'amazon', order_id: id, ordered_at: at, total, currency: 'JPY',
-    items: itemsOf_(text), email_id: msg.getId(), backfill: isBackfill || undefined,
-  } };
+  const out = [];
+  for (const block of blocksOf_(text)) {
+    const id = (block.match(ORDER_ID) || [])[1];
+    const total = totalOf_(block);
+    if (!id || total == null) continue;
+    let items = itemsOf_(block);
+    if (items && items.some(it => it.price == null || items.reduce((a, b) => a + (b.price || 0), 0) !== total)) {
+      Logger.log('items for %s do not add up to %s — sending the total only', id, total);
+      items = undefined;
+    }
+    out.push({ kind: 'purchase.detected', payload: {
+      source: 'amazon', order_id: id, ordered_at: at, total, currency: 'JPY',
+      items, email_id: msg.getId(), backfill: isBackfill || undefined,
+    } });
+  }
+  return out;
 }
 
 // Total, two layouts:
@@ -136,4 +157,15 @@ function debugLast() {
   const lines = body.split('\n').map(s => s.trim()).filter(Boolean);
   const i = lines.findIndex(s => TOTAL_LABEL.test(s));
   if (i >= 0) lines.slice(i, i + 4).forEach(s => Logger.log('> ' + s.slice(0, 120)));
+}
+
+// Diagnostic for one order: how the email splits into orders and what would be sent.  Sends nothing.
+const DEBUG_ORDER = '249-5735958-9677403';
+function debugOrder() {
+  const t = GmailApp.search(`${SENDERS} ${DEBUG_ORDER}`, 0, 1)[0];
+  if (!t) return Logger.log('no email for ' + DEBUG_ORDER);
+  const m = t.getMessages()[0], body = m.getPlainBody();
+  const lines = body.split('\n').map(s => s.trim()).filter(Boolean);
+  lines.forEach((s, i) => { if (ORDER_LABEL.test(s) || TOTAL_LABEL.test(s) || ORDER_ID.test(s) && s.length < 30) Logger.log('line %s: %s', i, s.slice(0, 60)); });
+  parse_(m, false).forEach(o => Logger.log('-> %s total %s, %s items', o.payload.order_id, o.payload.total, (o.payload.items || []).length));
 }
