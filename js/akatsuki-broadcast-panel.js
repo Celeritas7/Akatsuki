@@ -87,11 +87,22 @@
       const lt = el('label', null, 'Title'); lt.appendChild(t);
       const lb = el('label', null, 'Message'); lb.appendChild(b);
       const lw = el('label', null, 'Due'); lw.appendChild(w);
+      // Say the picked time back in words: a picker left on today's date with an after-midnight time is easy to miss.
+      const hint = el('div', 'muted');
+      const sayWhen = () => {
+        if (!w.value) { hint.textContent = ''; return; }
+        const ms = new Date(w.value).getTime() - Date.now(), min = Math.round(ms / 60e3);
+        const rel = ms < -60e3 ? 'in the past' : min <= 1 ? 'in about a minute' : min < 90 ? `in ${min} min` : min < 48 * 60 ? `in ${Math.round(min / 60)} h` : `in ${Math.round(min / 1440)} days`;
+        hint.textContent = `${fmt(new Date(w.value).toISOString())} — ${rel}`;
+        hint.style.color = ms < -60e3 ? '#ffb4b4' : '';
+      };
+      w.addEventListener('input', sayWhen); sayWhen(); lw.appendChild(hint);
       const addMsg = el('div', 'msg'); const add = el('button', 'primary', 'Add broadcast');
       add.onclick = async () => {
         addMsg.className = 'msg'; addMsg.textContent = '';
         if (!t.value.trim()) { addMsg.textContent = 'Give it a title.'; return; }
         if (!w.value) { addMsg.textContent = 'Pick a due time.'; return; }
+        if (new Date(w.value).getTime() < Date.now() - 60e3) { addMsg.textContent = 'That time has already passed — check the date.'; return; }
         add.disabled = true;
         const { error } = await supabase.rpc('akatsuki_broadcast_add', { p_title: t.value, p_body: b.value || null, p_due_at: new Date(w.value).toISOString() });
         add.disabled = false;
