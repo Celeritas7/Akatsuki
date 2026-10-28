@@ -7,7 +7,9 @@
 // Reply:   always a JSON array ([]) — OwnTracks expects one and shows an error otherwise.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
-const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } });
+// Keys (2026-10-28 key migration): prefer the new secret key, fall back to the legacy service_role key.
+const ADMIN_KEY = (() => { try { return JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS') || '{}').default; } catch { return null; } })() || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const sb = createClient(Deno.env.get('SUPABASE_URL')!, ADMIN_KEY, { auth: { persistSession: false } });
 
 function tokenOf(req: Request): string | null {
   const auth = req.headers.get('authorization') || '';
