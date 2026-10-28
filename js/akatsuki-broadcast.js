@@ -100,6 +100,7 @@
       const when = el('div', 'when', 'Due ' + fmtWhen(b.due_at) + (b.snoozes ? ` · snoozed ${b.snoozes}×` : ''));
       const late = lateBy(b.show_at); if (late) { const s = el('span', 'late', ' · ' + late); when.appendChild(s); }
       card.appendChild(when);
+      card.appendChild(el('div', 'when', 'Stays on every app until you press Done or Snooze.'));
       const err = el('div', 'err');
       const row = el('div', 'row');
       const done = el('button', 'done', 'Done');
