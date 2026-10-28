@@ -1,5 +1,5 @@
 // akatsuki-logo-sync — copies each app's own icon from its GitHub Pages site into akatsuki-logos.  R049 (was R038) · Oct 21
-// Deploy:  supabase functions deploy akatsuki-logo-sync        (Verify JWT on)
+// Deploy:  supabase functions deploy akatsuki-logo-sync --no-verify-jwt   (callers checked in code: callerOf)
 // Callers: pg_cron (service role, every user's rows) · a signed-in app, e.g. WF after seeding (that user's rows only).
 // Body:    { app_keys?: string[], force?: boolean }
 //
@@ -12,7 +12,12 @@
 //   · writes only rows whose logo_source is 'site' or null, and only when the content hash changed (unless force)
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
-const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } });
+// Keys (2026-10-28 key migration): prefer the new secret key (SUPABASE_SECRET_KEYS.default), fall back to the legacy
+// service_role key while it still exists.  Callers may use either; see callerOf().
+const URL_ = Deno.env.get('SUPABASE_URL')!;
+const SECRET_KEYS: string[] = (() => { try { return Object.values(JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS') || '{}')).map(String); } catch { return []; } })();
+const ADMIN_KEY = (() => { try { return JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS') || '{}').default; } catch { return null; } })() || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const sb = createClient(URL_, ADMIN_KEY, { auth: { persistSession: false } });
 // CORS: browsers send a preflight OPTIONS without the JWT; the gateway lets it through to us.  The bearer JWT
 // on the POST is the gate, not the origin (same rule as akatsuki-places-nearby).
 const CORS = {
@@ -25,10 +30,31 @@ const BUCKET = 'akatsuki-logos';
 const HOST = 'celeritas7.github.io';
 const MAX_PAGE = 1 << 20, MAX_IMAGE = 512 << 10, MAX_STORED = 64 << 10, USER_CAP = 40;
 
-function claims(req: Request): any {
-  const t = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '').split('.')[1];
+function claimsOf(token: string): any {
+  const t = token.split('.')[1];
   if (!t) return null;
   try { return JSON.parse(atob(t.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(t.length / 4) * 4, '='))); } catch { return null; }
+}
+// Who is calling.  Verify JWT is OFF at the gateway (new keys are not JWTs), so every path is checked here.
+//   service: apikey (or bearer) is one of the project's secret keys, or a legacy service_role JWT the admin API accepts
+//   user:    a signed-in user's access token, confirmed by Auth (getUser)
+async function callerOf(req: Request): Promise<{ service: true } | { user: string } | null> {
+  const apikey = (req.headers.get('apikey') || '').trim();
+  const bearer = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '').trim();
+  if (apikey && SECRET_KEYS.includes(apikey)) return { service: true };
+  if (bearer && SECRET_KEYS.includes(bearer)) return { service: true };
+  if (!bearer || bearer.startsWith('sb_')) return null;
+  const c = claimsOf(bearer);
+  if (c?.role === 'service_role') {
+    const probe = createClient(URL_, bearer, { auth: { persistSession: false } });
+    const { error } = await probe.auth.admin.listUsers({ page: 1, perPage: 1 });
+    return error ? null : { service: true };
+  }
+  if (c?.role === 'authenticated') {
+    const { data } = await sb.auth.getUser(bearer);
+    return data?.user ? { user: data.user.id } : null;
+  }
+  return null;
 }
 
 const onHost = (u: URL) => u.protocol === 'https:' && u.hostname === HOST;
@@ -134,11 +160,9 @@ async function syncRow(row: any, force: boolean): Promise<string> {
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { status: 200, headers: CORS });
   if (req.method !== 'POST') return json({ error: 'POST only' }, 405);
-  const c = claims(req);   // the gateway (Verify JWT on) has checked the signature
-  let userId: string | null = null;
-  if (c?.role === 'service_role') userId = null;
-  else if (c?.role === 'authenticated' && c.sub) userId = c.sub;
-  else return json({ error: 'sign in, or call with the service role' }, 401);
+  const who = await callerOf(req);
+  if (!who) return json({ error: 'sign in, or call with a secret key' }, 401);
+  const userId: string | null = 'user' in who ? who.user : null;
 
   const body = await req.json().catch(() => ({}));
   const keys = Array.isArray(body.app_keys) ? body.app_keys.filter((k: unknown) => typeof k === 'string').slice(0, 100) : null;

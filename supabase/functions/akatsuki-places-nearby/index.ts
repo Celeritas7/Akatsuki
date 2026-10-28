@@ -1,5 +1,5 @@
 // akatsuki-places-nearby — the hub's Google Places lookup.  R018 G3 · Oct 5
-// Deploy:  supabase functions deploy akatsuki-places-nearby
+// Deploy:  supabase functions deploy akatsuki-places-nearby --no-verify-jwt   (the caller's user JWT is checked in code: auth.getUser)
 // Secret:  GOOGLE_PLACES_API_KEY (already set for Cost's places-nearby — same project, same secret)
 //
 // Differences from Cost's places-nearby (B8): the caller's JWT is verified and every DB call runs AS THAT USER
@@ -65,6 +65,10 @@ async function explore(sb: any, uid: string, origin: string | null, req: Request
   return json(origin, { status: candidates.length ? 'fetched' : 'empty', cached: false, calls, ...payload });
 }
 
+// Keys (2026-10-28 key migration): the new publishable key, falling back to the legacy anon key.  Either way the
+// DB calls run as the forwarded user JWT; a request with no signed-in user stops at getUser below.
+const PUBLIC_KEY = (() => { try { return JSON.parse(Deno.env.get('SUPABASE_PUBLISHABLE_KEYS') || '{}').default; } catch { return null; } })() || Deno.env.get('SUPABASE_ANON_KEY')!;
+
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
   if (req.method === 'OPTIONS') return new Response('ok', { status: 200, headers: cors(origin) });
@@ -76,7 +80,7 @@ Deno.serve(async (req) => {
   // 'authorization' sits next to its default 'Authorization: Bearer <anon>' — two headers, auth.uid() null.
   const auth = req.headers.get('Authorization') || req.headers.get('authorization') || '';
   const jwt = auth.replace(/^Bearer\s+/i, '');
-  const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
+  const sb = createClient(Deno.env.get('SUPABASE_URL')!, PUBLIC_KEY, {
     global: { headers: { Authorization: auth } }, auth: { persistSession: false, autoRefreshToken: false },
   });
   const { data: { user } } = await sb.auth.getUser(jwt);

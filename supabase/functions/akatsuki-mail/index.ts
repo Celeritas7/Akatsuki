@@ -6,7 +6,9 @@
 // Reply:   { status, seq, code }   — status pending | skipped | closed.  Payloads are never logged (item names are personal).
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
-const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } });
+// Keys (2026-10-28 key migration): prefer the new secret key, fall back to the legacy service_role key.
+const ADMIN_KEY = (() => { try { return JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS') || '{}').default; } catch { return null; } })() || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const sb = createClient(Deno.env.get('SUPABASE_URL')!, ADMIN_KEY, { auth: { persistSession: false } });
 const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { 'Content-Type': 'application/json' } });
 const MAX_BYTES = 8192;
 const SOURCES = ['amazon'];

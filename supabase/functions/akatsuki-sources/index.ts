@@ -1,6 +1,6 @@
 // akatsuki-sources — the hub's fetcher for keyless public sources.  R040b · Oct 18 · R045 Oct 24
-// Deploy:  supabase functions deploy akatsuki-sources   (JWT verify on; caller must be service role)
-// Invoked by pg_cron (R040b) or by hand: curl -X POST .../akatsuki-sources -H "Authorization: Bearer <service_role>" -d '{"source":"fx","force":true}'
+// Deploy:  supabase functions deploy akatsuki-sources --no-verify-jwt   (service callers checked in code: isService)
+// Invoked by pg_cron (R040b) or by hand: curl -X POST .../akatsuki-sources -H "apikey: <secret key>" -d '{"source":"fx","force":true}'
 // Writes akatsuki_cache (+ akatsuki_weather_daily for weather_history).  Never called by a page.
 //   fx       open.er-api.com (ExchangeRate-API open access, no key, daily).  Keys JPY:<date> + JPY:latest.
 //   climate  Open-Meteo historical archive (ERA5, no key).  10 full years → monthly normals per point.  Key = point id.
@@ -8,8 +8,11 @@
 //   weather_history  Open-Meteo past_days → akatsuki_weather_daily, one row per point per completed local day (R045).
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
-const SERVICE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const sb = createClient(Deno.env.get('SUPABASE_URL')!, SERVICE, { auth: { persistSession: false } });
+// Keys (2026-10-28 key migration): prefer the new secret key, fall back to the legacy service_role key.
+const URL_ = Deno.env.get('SUPABASE_URL')!;
+const SECRET_KEYS: string[] = (() => { try { return Object.values(JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS') || '{}')).map(String); } catch { return []; } })();
+const ADMIN_KEY = (() => { try { return JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS') || '{}').default; } catch { return null; } })() || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const sb = createClient(URL_, ADMIN_KEY, { auth: { persistSession: false } });
 const CLIMATE_YEARS = [2015, 2024];   // full years only; bump yearly
 const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { 'Content-Type': 'application/json' } });
 
@@ -449,17 +452,24 @@ async function validate(user_id: string, days: number) {
   return { start, end, rows };
 }
 
-// The gateway (Verify JWT on) has already checked the signature; read the role claim.
-// Not a string compare with SUPABASE_SERVICE_ROLE_KEY: on this project the env value differs from the dashboard's legacy JWT.
-function roleOf(req: Request): string | null {
-  const t = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/, '').split('.')[1];
-  if (!t) return null;
-  try { return JSON.parse(atob(t.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(t.length / 4) * 4, '='))).role ?? null; }
-  catch { return null; }
+// Service callers only (pg_cron or by hand).  Verify JWT is off at the gateway (new keys are not JWTs), so the check
+// is here: a project secret key on apikey/bearer, or a legacy service_role JWT the admin API accepts.
+async function isService(req: Request): Promise<boolean> {
+  const apikey = (req.headers.get('apikey') || '').trim();
+  const bearer = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '').trim();
+  if ((apikey && SECRET_KEYS.includes(apikey)) || (bearer && SECRET_KEYS.includes(bearer))) return true;
+  if (!bearer || bearer.startsWith('sb_')) return false;
+  try {
+    const t = bearer.split('.')[1];
+    const role = JSON.parse(atob(t.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(t.length / 4) * 4, '='))).role;
+    if (role !== 'service_role') return false;
+  } catch { return false; }
+  const { error } = await createClient(URL_, bearer, { auth: { persistSession: false } }).auth.admin.listUsers({ page: 1, perPage: 1 });
+  return !error;
 }
 
 Deno.serve(async (req) => {
-  if (roleOf(req) !== 'service_role') return json({ error: 'service role only' }, 401);
+  if (!(await isService(req))) return json({ error: 'service role only' }, 401);
   const body = await req.json().catch(() => ({}));
   if (body.source === 'validate') {
     const { data: w } = await sb.from('akatsuki_sources').select('user_id').eq('id', 'weather').limit(1).maybeSingle();
