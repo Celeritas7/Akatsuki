@@ -11,7 +11,7 @@
 --   R046  weather risk / change / seasons / plan key (all in akatsuki-sources v13
 --         and its cache payload; the only schema change is the seasons column)
 --   R047  view akatsuki_food_dish_ingredients · Food Department registered (id food)
---   also  view akatsuki_visit_points (found live, not named in the handover)
+--   (akatsuki_visit_points, found live at the time, is Setu's R051 — its own file)
 --
 -- NOT in this file, on purpose — this repo is public:
 --   · the akatsuki_apps cards for healthlog and food, their routes, and the
@@ -102,21 +102,4 @@ revoke all on public.akatsuki_food_dish_ingredients from anon, authenticated;
 grant select on public.akatsuki_food_dish_ingredients to authenticated;
 
 
--- ═══ found live · akatsuki_visit_points ═══════════════════════════════════
-create or replace view public.akatsuki_visit_points with (security_invoker = on) as
- SELECT v.seq,
-    v.device,
-    v.since,
-    v.until,
-    v.last_seen_at,
-    COALESCE(v.until, v.last_seen_at) - v.since AS dur,
-    v.lat,
-    v.lng,
-    v.radius_m,
-    v.acc_m,
-    v.place_id,
-    p.label AS place_label,
-    p.class
-   FROM akatsuki_visits v
-     LEFT JOIN akatsuki_places p ON p.user_id = v.user_id AND p.id = v.place_id
-  WHERE v.merged_into IS NULL AND v.since > (now() - '90 days'::interval) AND v.lat IS NOT NULL AND v.lng IS NOT NULL;
+-- akatsuki_visit_points is defined in sql/akatsuki_visit_points_R051.sql (Setu, 2026-10-24).
