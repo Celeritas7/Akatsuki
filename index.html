@@ -31,6 +31,8 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') addEventListe
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/config.js"></script>
   <script src="js/akatsuki-location.js"></script>
+  <script src="js/akatsuki-broadcast.js"></script>
+  <script src="js/akatsuki-broadcast-panel.js"></script>
   <title>Akatsuki</title>
   <link rel="icon" type="image/png" href="assets/favicon.png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
@@ -961,6 +963,7 @@ class Component extends DCLogic {
     const c = this.cfg(); if (!c || !window.supabase) return;
     try {
       this.sb = window.supabase.createClient(c.SUPABASE_URL, c.SUPABASE_ANON_KEY);
+      if (window.AkatsukiBroadcast) window.AkatsukiBroadcast(this.sb, 'akatsuki').start();   // R054: due broadcasts cover the hub too
       const { data: { session } } = await this.sb.auth.getSession();
       const q = new URLSearchParams((location.hash || '').slice(1) || location.search);
       const oauthErr = q.get('error_description');
@@ -989,6 +992,7 @@ class Component extends DCLogic {
   }
   async loadLive() {
     if (!this.sb) return;
+    if (!this.bcPanel && window.AkatsukiBroadcastPanel) this.bcPanel = window.AkatsukiBroadcastPanel(this.sb, { bottom: 84 }).mount();   // R054 stand-in until Roadmap's section
     this.setState({ liveBusy: true });
     try {
       const [apps, routes, sources, creds] = await Promise.all([
