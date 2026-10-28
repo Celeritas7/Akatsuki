@@ -44,3 +44,12 @@ begin
   update akatsuki_credentials set scope = 'LEGACY anon JWT. Shared project, RLS-gated. Being replaced by supabase_publishable app by app; deactivate when no app sends it.'
    where user_id = u and name = 'supabase_anon';
 end $$;
+
+
+-- ═══ chatak-collect (Chatak's daily price run) — audit fix, same day ════════
+-- It called collect-prices with no key at all; collect-prices now refuses anything but the secret key.
+select cron.alter_job(jobid, command := replace(command,
+  $q$headers := '{"Content-Type":"application/json"}'::jsonb,$q$,
+  $q$headers := jsonb_build_object('Content-Type','application/json',
+                 'apikey', (select decrypted_secret from vault.decrypted_secrets where name = 'akatsuki_secret_key')),$q$))
+from cron.job where jobname = 'chatak-collect';
