@@ -59,3 +59,6 @@ begin
           'R057 — view akatsuki_addresses. WF copies into its Vault (src app tapal), never writes back. Live when WF''s import ships.')
   on conflict (user_id, from_app, to_app, kind) do update set access = excluded.access, note = excluded.note;
 end $$;
+
+-- 2026-11-01: WF v126 "Import from Tapal" shipped → route set live:
+-- update akatsuki_routes set state = 'live' where from_app = 'tapal' and to_app = 'wf' and kind = 'address';
