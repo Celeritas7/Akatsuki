@@ -1,6 +1,6 @@
 -- ============================================================================
 -- Akatsuki R057 · akatsuki_addresses — Tapal's addresses for other apps (WF's Vault first).
--- 2026-11-01.  Idempotent.  NOT applied yet: waits on the person's go (asked for by WF's session).
+-- 2026-11-01.  Idempotent.  Applied live 2026-11-01 with Part A, on the person's go (asked for by WF's session).
 --
 -- Tapal owns the addresses.  This is a read-only view; no app writes Tapal's tables through it.
 -- WF keeps a COPY in its Vault tagged src {app:'tapal', id, u} ("Import / Update from Tapal") and never
@@ -18,11 +18,11 @@
 -- (tapal_my_role() is not null), so without this filter any Tapal role would see every row.
 --
 -- PART A (one-time, Tapal's data): 4 of 5 tapal_addresses rows have user_id NULL (pre-auth legacy rows).
--- They are invisible through this view until they get an owner.  Run A only with the person's OK.
+-- They are invisible through this view until they get an owner.  The person said yes to A (2026-11-01).
 -- ============================================================================
 
 -- ═══ A · give the legacy addresses their owner (the hub user) ═════════════════
--- update public.tapal_addresses set user_id = 'e91a5f37-e63a-4fd0-8488-4d7a51d56822' where user_id is null;
+update public.tapal_addresses set user_id = 'e91a5f37-e63a-4fd0-8488-4d7a51d56822' where user_id is null;
 
 -- ═══ B · the view ════════════════════════════════════════════════════════════
 create or replace view public.akatsuki_addresses with (security_invoker = on) as
