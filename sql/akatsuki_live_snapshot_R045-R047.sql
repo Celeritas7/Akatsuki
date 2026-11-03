@@ -82,6 +82,10 @@ create or replace view public.akatsuki_weather with (security_invoker = on) as
     payload -> 'seasons'::text AS seasons
    FROM akatsuki_cache c
   WHERE source = 'weather'::text AND (expires_at IS NULL OR expires_at > now());
+-- Privacy fix, applied 2026-10-24 03:12 UTC (migration name akatsuki_weather_R047_security_invoker; it was on branch
+-- claude/discussion-needed-glouo7 as R048, a number R048 mail now holds).  Before it the view ran as its owner and anon
+-- could read every place's weather.  security_invoker is set above; this is the other half:
+revoke select on public.akatsuki_weather from anon;
 
 
 -- ═══ R047 · Food Department's dish → ingredients, for Health Log ══════════
