@@ -7,7 +7,7 @@ const SHELL = [
   './', './index.html', './support.js', './manifest.json', './js/config.js', './js/akatsuki-client.js', './js/akatsuki-location.js', './js/akatsuki-broadcast.js', './js/akatsuki-broadcast-panel.js',
   DS + '/styles.css', DS + '/_ds_bundle.js', DS + '/tokens/fonts.css', DS + '/tokens/colors.css', DS + '/tokens/typography.css', DS + '/tokens/spacing.css', DS + '/tokens/effects.css',
   './assets/favicon.png', './assets/apple-touch-icon.png', './assets/logo-moon-3a.png', './assets/icon-192.png', './assets/icon-512.png',
-  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'
+  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0'
 ];
 const CACHED_ORIGINS = [self.location.origin, 'https://cdn.jsdelivr.net', 'https://fonts.googleapis.com', 'https://fonts.gstatic.com'];
 self.addEventListener('install', e => {
