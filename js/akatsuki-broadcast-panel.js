@@ -1,7 +1,8 @@
 /* akatsuki-broadcast-panel.js — add / list / cancel broadcasts, and switch phone push on.  R054 · Oct 28
  *
  * The hub page's stand-in until Roadmap's own section exists (Roadmap calls the same RPC: akatsuki_broadcast_add).
- *   AkatsukiBroadcastPanel(supabase, { bottom: 84 }).mount();   // a 📣 button, bottom-right; opens a sheet
+ *   AkatsukiBroadcastPanel(supabase, { bottom: 84, app: 'akatsuki' }).mount();   // a 📣 button, bottom-right; opens a sheet
+ *   app: recorded as the broadcast's created_by (R058); defaults to 'akatsuki'.
  * Push needs this page's service worker (sw.js, scope ./) and, on iPhone, the hub installed to the Home Screen.
  */
 (function () {
@@ -34,6 +35,7 @@
   function b64ToBytes(s) { const p = '='.repeat((4 - (s.length % 4)) % 4); const raw = atob((s + p).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from(raw, c => c.charCodeAt(0)); }
 
   function AkatsukiBroadcastPanel(supabase, opts = {}) {
+    const app = opts.app || 'akatsuki';
     let host = null, root = null, sheet = null;
     const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
 
@@ -104,7 +106,7 @@
         if (!w.value) { addMsg.textContent = 'Pick a due time.'; return; }
         if (new Date(w.value).getTime() < Date.now() - 60e3) { addMsg.textContent = 'That time has already passed — check the date.'; return; }
         add.disabled = true;
-        const { error } = await supabase.rpc('akatsuki_broadcast_add', { p_title: t.value, p_body: b.value || null, p_due_at: new Date(w.value).toISOString() });
+        const { error } = await supabase.rpc('akatsuki_broadcast_add', { p_title: t.value, p_body: b.value || null, p_due_at: new Date(w.value).toISOString(), p_app: app });
         add.disabled = false;
         if (error) { addMsg.textContent = error.message; return; }
         render();
