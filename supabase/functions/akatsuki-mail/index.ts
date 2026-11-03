@@ -1,4 +1,5 @@
 // akatsuki-mail — headless producer: purchases found in Gmail → Cost.  R048 (was R037) · Oct 21
+// R060 · Nov 3: source 'yahoo_shopping'; purchase.detected may carry store, payment, pay_by.
 // Deploy:  supabase functions deploy akatsuki-mail --no-verify-jwt
 //          (no Supabase JWT: Apps Script has none.  A scope='mail' token in akatsuki_ingest_tokens is the credential.)
 // Auth:    Authorization: Bearer <token>
@@ -11,12 +12,17 @@ const ADMIN_KEY = (() => { try { return JSON.parse(Deno.env.get('SUPABASE_SECRET
 const sb = createClient(Deno.env.get('SUPABASE_URL')!, ADMIN_KEY, { auth: { persistSession: false } });
 const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { 'Content-Type': 'application/json' } });
 const MAX_BYTES = 8192;
-const SOURCES = ['amazon'];
+const SOURCES = ['amazon', 'yahoo_shopping'];
+const PAYMENTS = ['card', 'konbini', 'paypay', 'bank', 'cod'];
 
 const str = (v: unknown, max: number) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : undefined);
 const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : typeof v === 'string' && v.trim() && Number.isFinite(Number(v)) ? Number(v) : undefined);
 const iso = (v: unknown) => { const s = str(v, 40); return s && !Number.isNaN(Date.parse(s)) ? new Date(s).toISOString() : undefined; };
+const day = (v: unknown) => { const s = str(v, 10); return s && /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(s)) ? s : undefined; };
 const clean = (o: Record<string, unknown>) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined));
+
+// payment: a known value as-is (case-folded), anything else kept as raw text ≤ 30 chars.
+const payment = (v: unknown) => { const s = str(v, 30); return s && PAYMENTS.includes(s.toLowerCase()) ? s.toLowerCase() : s; };
 
 // Only the contract's fields go through; anything else in the body is dropped here, not stored.
 function shape(kind: string, p: any): { payload: Record<string, unknown>; clock?: string } | string {
@@ -30,7 +36,8 @@ function shape(kind: string, p: any): { payload: Record<string, unknown>; clock?
       ? p.items.slice(0, 30).map((it: any) => clean({ name: str(it?.name, 60), qty: num(it?.qty), price: num(it?.price) })).filter((it: any) => it.name)
       : undefined;
     return { clock: ordered_at, payload: clean({ source, order_id, ordered_at, total, currency: str(p.currency, 3) || 'JPY',
-      items: items && items.length ? items : undefined, email_id: str(p.email_id, 64), backfill: p.backfill === true ? true : undefined }) };
+      items: items && items.length ? items : undefined, store: str(p.store, 60), payment: payment(p.payment), pay_by: day(p.pay_by),
+      email_id: str(p.email_id, 64), backfill: p.backfill === true ? true : undefined }) };
   }
   const cancelled_at = iso(p.cancelled_at);
   return { clock: cancelled_at, payload: clean({ source, order_id, refund_total: num(p.refund_total), cancelled_at, email_id: str(p.email_id, 64) }) };
