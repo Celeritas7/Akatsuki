@@ -1,6 +1,8 @@
 /* akatsuki-broadcast-panel.js — add / list / cancel broadcasts, and switch phone push on.  R054 · Oct 28
  *   R062 · Nov 4: "When I arrive" — a rule fires a broadcast on arrival at a saved place (Home, Office…),
  *   on the first arrival of each day or on the next arrival only.
+ *   R062b · Nov 4: places are grouped into country hubs (from their coordinates); the picker shows the chosen
+ *   hub only.  The choice is remembered on this device.  Rules in every hub stay active.
  *
  * The hub page's stand-in until Roadmap's own section exists (Roadmap calls the same RPC: akatsuki_broadcast_add).
  *   AkatsukiBroadcastPanel(supabase, { bottom: 84, app: 'akatsuki' }).mount();   // a 📣 button, bottom-right; opens a sheet
@@ -34,6 +36,17 @@
   const pad = (n) => String(n).padStart(2, '0');
   const localInput = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   const fmt = (iso) => new Date(iso).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  // Country hubs, worked out from a place's coordinates (country-sized boxes; HK is checked before the wider ones).
+  const HUBS = [
+    { id: 'jp', label: '🇯🇵 Japan', box: [24, 46, 122, 154] },
+    { id: 'in', label: '🇮🇳 India', box: [6, 37, 68, 98] },
+    { id: 'hk', label: '🇭🇰 Hong Kong', box: [22.1, 22.6, 113.8, 114.5] },
+  ];
+  const hubOf = (p) => { const inBox = (h) => p.lat >= h.box[0] && p.lat <= h.box[1] && p.lng >= h.box[2] && p.lng <= h.box[3];
+    const hk = HUBS[2]; if (inBox(hk)) return 'hk'; const h = HUBS.find(inBox); return h ? h.id : 'other'; };
+  const HUB_KEY = 'akatsuki.broadcast.hub';
+  const hubGet = () => { try { return localStorage.getItem(HUB_KEY); } catch { return null; } };
+  const hubSet = (v) => { try { localStorage.setItem(HUB_KEY, v); } catch { /* private mode: not remembered */ } };
   function b64ToBytes(s) { const p = '='.repeat((4 - (s.length % 4)) % 4); const raw = atob((s + p).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from(raw, c => c.charCodeAt(0)); }
 
   function AkatsukiBroadcastPanel(supabase, opts = {}) {
@@ -96,12 +109,24 @@
       const lwhen = el('label', null, 'When'); lwhen.appendChild(when);
       const pl = el('select'), md = el('select');
       [['daily_first', 'First arrival of each day'], ['once', 'Next arrival only']].forEach(([v, l]) => { const o = el('option', null, l); o.value = v; md.appendChild(o); });
-      const { data: places } = await supabase.from('akatsuki_places').select('id,label,lat,retired_at').is('retired_at', null).not('lat', 'is', null).order('ord', { nullsFirst: false });
-      (places || []).forEach(p => { const o = el('option', null, p.label); o.value = p.id; pl.appendChild(o); });
-      if ((places || []).some(p => p.id === 'home')) pl.value = 'home';
+      const { data: places } = await supabase.from('akatsuki_places').select('id,label,lat,lng,retired_at').is('retired_at', null).not('lat', 'is', null).order('ord', { nullsFirst: false });
+      (places || []).forEach(p => { p.hub = hubOf(p); });
+      // hub switch: only hubs that have places; remembered on this device; Japan first by default
+      const hubs = HUBS.filter(h => (places || []).some(p => p.hub === h.id));
+      if ((places || []).some(p => p.hub === 'other')) hubs.push({ id: 'other', label: '🌐 Other' });
+      const hb = el('select'); hubs.forEach(h => { const o = el('option', null, h.label); o.value = h.id; hb.appendChild(o); });
+      const saved = hubGet(); hb.value = hubs.some(h => h.id === saved) ? saved : (hubs[0] ? hubs[0].id : '');
+      const fillPlaces = () => {
+        pl.replaceChildren();
+        (places || []).filter(p => p.hub === hb.value).forEach(p => { const o = el('option', null, p.label); o.value = p.id; pl.appendChild(o); });
+        if ([...pl.options].some(o => o.value === 'home')) pl.value = 'home';
+      };
+      hb.addEventListener('change', () => { hubSet(hb.value); fillPlaces(); });
+      fillPlaces();
+      const lhb = el('label', null, 'Hub'); lhb.appendChild(hb);
       const lpl = el('label', null, 'Place'); lpl.appendChild(pl);
       const lmd = el('label', null, 'Repeat'); lmd.appendChild(md);
-      const showWhen = () => { const a = when.value === 'arrive'; lw.style.display = a ? 'none' : ''; lpl.style.display = lmd.style.display = a ? '' : 'none'; };
+      const showWhen = () => { const a = when.value === 'arrive'; lw.style.display = a ? 'none' : ''; lhb.style.display = lpl.style.display = lmd.style.display = a ? '' : 'none'; };
       when.addEventListener('change', showWhen);
       // Say the picked time back in words: a picker left on today's date with an after-midnight time is easy to miss.
       const hint = el('div', 'muted');
@@ -133,13 +158,13 @@
         if (error) { addMsg.textContent = error.message; return; }
         render();
       };
-      box.append(lt, lb, lwhen, lw, lpl, lmd, add, addMsg); showWhen();
+      box.append(lt, lb, lwhen, lw, lhb, lpl, lmd, add, addMsg); showWhen();
 
       // R062: arrival rules
       const { data: rules } = await supabase.from('akatsuki_broadcast_rules').select('id,place_id,title,mode,state,last_fired_at,fired_count')
         .eq('state', 'active').order('created_at');
       if ((rules || []).length) {
-        const label = (id) => ((places || []).find(p => p.id === id) || {}).label || id;
+        const label = (id) => { const p = (places || []).find(q => q.id === id); if (!p) return id; const h = HUBS.find(x => x.id === p.hub); return (h ? h.label.split(' ')[0] + ' ' : '') + p.label; };
         box.appendChild(el('h3', null, 'When I arrive'));
         for (const r of rules) {
           const it = el('div', 'item'); const tx = el('div', 't'); tx.appendChild(el('b', null, r.title));
