@@ -5,6 +5,8 @@
 // v2: dropped pins (/maps/search/<lat>,<lng>, /maps/place/35°50'39.6"N…, /maps/dir/…/<lat>,<lng>) are read too.
 // 2026-11-04 (Akatsuki hub, key migration): the user check uses the new publishable key, falling back to the
 // legacy anon key, so it keeps working after the legacy JWT keys are disabled.  Nothing else changed.
+// 2026-11-04 (later): deployed with Verify JWT OFF (supabase functions deploy setu-map-link --no-verify-jwt), for the
+// JWT signing-key migration: the gateway check only understands the legacy JWT secret. The getUser() check is the gate.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 // Keys (2026-10-28 key migration): publishable key, legacy anon fallback.

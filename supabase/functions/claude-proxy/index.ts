@@ -1,5 +1,7 @@
 // claude-proxy — Code_sensei's Claude calls.  Not a hub function: kept here because the hub capped it (audit 2026-10-28).
-// Deploy:  supabase functions deploy claude-proxy        (Verify JWT ON, as before)
+// Deploy:  supabase functions deploy claude-proxy --no-verify-jwt
+// 2026-11-04: Verify JWT OFF for the JWT signing-key migration (the gateway check only understands the legacy
+// JWT secret). It never was the gate: the x-cs-secret header and the daily cap below are.
 //
 // Gate today: the x-cs-secret header.  That secret ships in Code_sensei's public index.html, so it is NOT a real
 // gate — anyone can read it.  Until Code_sensei has sign-in (then: auth.getUser, drop the secret), the damage a
