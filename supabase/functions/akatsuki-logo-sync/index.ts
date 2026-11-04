@@ -5,7 +5,8 @@
 //
 // Rules (AKATSUKI-REPLY-wf-app-logos.md):
 //   · fetches https://celeritas7.github.io/… only; anything else is recorded as host_not_allowed and never fetched
-//   · no cookies or credentials; redirects followed only while they stay on that host; page ≤ 1 MB, image ≤ 512 KB
+//   · no cookies or credentials; redirects followed only while they stay on that host; image ≤ 512 KB, manifest ≤ 100 KB
+//   · the page itself: only its first 256 KB are read (the icon tags are in <head>); a bigger page is cut, not refused
 //   · candidates: apple-touch-icon → largest manifest icon ≤ 512 px → rel=icon
 //   · PNG or WebP only, ≤ 64 KB as stored (the bucket's limit).  The image is stored as served, not re-encoded:
 //     the first candidate that fits wins.  SVG, ICO and JPEG are skipped.
@@ -28,7 +29,7 @@ const CORS = {
 const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { ...CORS, 'Content-Type': 'application/json' } });
 const BUCKET = 'akatsuki-logos';
 const HOST = 'celeritas7.github.io';
-const MAX_PAGE = 1 << 20, MAX_IMAGE = 512 << 10, MAX_STORED = 64 << 10, USER_CAP = 40;
+const PAGE_HEAD = 256 << 10, MAX_IMAGE = 512 << 10, MAX_STORED = 64 << 10, USER_CAP = 40;
 
 function claimsOf(token: string): any {
   const t = token.split('.')[1];
@@ -59,8 +60,10 @@ async function callerOf(req: Request): Promise<{ service: true } | { user: strin
 
 const onHost = (u: URL) => u.protocol === 'https:' && u.hostname === HOST;
 
-// fetch that stays on HOST, sends nothing identifying, and stops reading at `max` bytes
-async function get(url: URL, max: number): Promise<{ bytes: Uint8Array; type: string; url: URL } | string> {
+// fetch that stays on HOST, sends nothing identifying, and stops reading at `max` bytes.
+// partial=false: anything over `max` is refused ('too_large').  partial=true: the first `max` bytes are kept and the
+// rest cancelled — for the HTML page, whose <link> tags sit in <head> (Holdings' page is 11 MB; its </head> is at 1.5 KB).
+async function get(url: URL, max: number, partial = false): Promise<{ bytes: Uint8Array; type: string; url: URL } | string> {
   let cur = url;
   for (let hop = 0; hop < 4; hop++) {
     if (!onHost(cur)) return 'redirect_off_host';
@@ -72,12 +75,15 @@ async function get(url: URL, max: number): Promise<{ bytes: Uint8Array; type: st
     }
     if (!res.ok) { await res.body?.cancel(); return `http_${res.status}`; }
     const len = Number(res.headers.get('content-length') || 0);
-    if (len > max) { await res.body?.cancel(); return 'too_large'; }
+    if (len > max && !partial) { await res.body?.cancel(); return 'too_large'; }
     const reader = res.body!.getReader(); const parts: Uint8Array[] = []; let n = 0;
     for (;;) {
       const { done, value } = await reader.read(); if (done) break;
-      n += value.length; if (n > max) { await reader.cancel(); return 'too_large'; }
-      parts.push(value);
+      if (n + value.length > max) {
+        if (!partial) { await reader.cancel(); return 'too_large'; }
+        parts.push(value.subarray(0, max - n)); n = max; await reader.cancel(); break;
+      }
+      n += value.length; parts.push(value);
     }
     const bytes = new Uint8Array(n); let o = 0; for (const p of parts) { bytes.set(p, o); o += p.length; }
     return { bytes, type: (res.headers.get('content-type') || '').split(';')[0].trim(), url: cur };
@@ -100,7 +106,7 @@ function pngSquare(b: Uint8Array) {
 }
 
 async function candidates(home: URL): Promise<URL[] | string> {
-  const page = await get(home, MAX_PAGE);
+  const page = await get(home, PAGE_HEAD, true);
   if (typeof page === 'string') return 'page_' + page;
   const html = new TextDecoder().decode(page.bytes);
   const links = [...html.matchAll(/<link\b[^>]*>/gi)].map((m) => m[0]);
