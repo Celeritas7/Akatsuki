@@ -3,6 +3,7 @@
  *   on the first arrival of each day or on the next arrival only.
  *   R062b · Nov 4: places are grouped into country hubs (from their coordinates); the picker shows the chosen
  *   hub only.  The choice is remembered on this device.  Rules in every hub stay active.
+ *   R063 · Nov 4: each hub lists "My places" and "Areas" (akatsuki_areas — Cost's areas, by their country).
  *
  * The hub page's stand-in until Roadmap's own section exists (Roadmap calls the same RPC: akatsuki_broadcast_add).
  *   AkatsukiBroadcastPanel(supabase, { bottom: 84, app: 'akatsuki' }).mount();   // a 📣 button, bottom-right; opens a sheet
@@ -110,16 +111,24 @@
       const pl = el('select'), md = el('select');
       [['daily_first', 'First arrival of each day'], ['once', 'Next arrival only']].forEach(([v, l]) => { const o = el('option', null, l); o.value = v; md.appendChild(o); });
       const { data: places } = await supabase.from('akatsuki_places').select('id,label,lat,lng,retired_at').is('retired_at', null).not('lat', 'is', null).order('ord', { nullsFirst: false });
-      (places || []).forEach(p => { p.hub = hubOf(p); });
+      (places || []).forEach(p => { p.hub = hubOf(p); p.key = 'p:' + p.id; });
+      const { data: areaRows } = await supabase.from('akatsuki_areas').select('id,label,country,lat,lng,retired_at').is('retired_at', null).not('lat', 'is', null).order('label');
+      const areas = (areaRows || []).map(a => ({ ...a, key: 'a:' + a.id, hub: ({ JP: 'jp', IN: 'in', HK: 'hk' })[String(a.country || '').toUpperCase()] || hubOf(a) }));
       // hub switch: only hubs that have places; remembered on this device; Japan first by default
-      const hubs = HUBS.filter(h => (places || []).some(p => p.hub === h.id));
-      if ((places || []).some(p => p.hub === 'other')) hubs.push({ id: 'other', label: '🌐 Other' });
+      const targets = [...(places || []), ...areas];
+      const hubs = HUBS.filter(h => targets.some(p => p.hub === h.id));
+      if (targets.some(p => p.hub === 'other')) hubs.push({ id: 'other', label: '🌐 Other' });
       const hb = el('select'); hubs.forEach(h => { const o = el('option', null, h.label); o.value = h.id; hb.appendChild(o); });
       const saved = hubGet(); hb.value = hubs.some(h => h.id === saved) ? saved : (hubs[0] ? hubs[0].id : '');
       const fillPlaces = () => {
         pl.replaceChildren();
-        (places || []).filter(p => p.hub === hb.value).forEach(p => { const o = el('option', null, p.label); o.value = p.id; pl.appendChild(o); });
-        if ([...pl.options].some(o => o.value === 'home')) pl.value = 'home';
+        for (const [name, list] of [['My places', places || []], ['Areas', areas]]) {
+          const mine = list.filter(p => p.hub === hb.value); if (!mine.length) continue;
+          const g = el('optgroup'); g.label = name;
+          mine.forEach(p => { const o = el('option', null, p.label); o.value = p.key; g.appendChild(o); });
+          pl.appendChild(g);
+        }
+        if ([...pl.options].some(o => o.value === 'p:home')) pl.value = 'p:home';
       };
       hb.addEventListener('change', () => { hubSet(hb.value); fillPlaces(); });
       fillPlaces();
@@ -145,7 +154,8 @@
         if (when.value === 'arrive') {
           if (!pl.value) { addMsg.textContent = 'Pick a place.'; return; }
           add.disabled = true;
-          const r = await supabase.rpc('akatsuki_broadcast_rule_add', { p_place_id: pl.value, p_title: t.value, p_body: b.value || null, p_mode: md.value, p_app: app });
+          const isArea = pl.value.startsWith('a:'), id = pl.value.slice(2);
+          const r = await supabase.rpc('akatsuki_broadcast_rule_add', { p_place_id: isArea ? null : id, p_area_id: isArea ? id : null, p_title: t.value, p_body: b.value || null, p_mode: md.value, p_app: app });
           add.disabled = false;
           if (r.error) { addMsg.textContent = r.error.message; return; }
           render(); return;
@@ -161,14 +171,15 @@
       box.append(lt, lb, lwhen, lw, lhb, lpl, lmd, add, addMsg); showWhen();
 
       // R062: arrival rules
-      const { data: rules } = await supabase.from('akatsuki_broadcast_rules').select('id,place_id,title,mode,state,last_fired_at,fired_count')
+      const { data: rules } = await supabase.from('akatsuki_broadcast_rules').select('id,place_id,area_id,title,mode,state,last_fired_at,fired_count')
         .eq('state', 'active').order('created_at');
       if ((rules || []).length) {
-        const label = (id) => { const p = (places || []).find(q => q.id === id); if (!p) return id; const h = HUBS.find(x => x.id === p.hub); return (h ? h.label.split(' ')[0] + ' ' : '') + p.label; };
+        const label = (r) => { const p = r.area_id ? areas.find(q => q.id === r.area_id) : (places || []).find(q => q.id === r.place_id);
+          if (!p) return r.place_id || 'area'; const h = HUBS.find(x => x.id === p.hub); return (h ? h.label.split(' ')[0] + ' ' : '') + p.label + (r.area_id ? ' (area)' : ''); };
         box.appendChild(el('h3', null, 'When I arrive'));
         for (const r of rules) {
           const it = el('div', 'item'); const tx = el('div', 't'); tx.appendChild(el('b', null, r.title));
-          tx.appendChild(el('div', 'muted', `${label(r.place_id)} · ${r.mode === 'once' ? 'next arrival only' : 'first arrival each day'}` + (r.last_fired_at ? ` · last ${fmt(r.last_fired_at)}` : ' · not fired yet')));
+          tx.appendChild(el('div', 'muted', `${label(r)} · ${r.mode === 'once' ? 'next arrival only' : 'first arrival each day'}` + (r.last_fired_at ? ` · last ${fmt(r.last_fired_at)}` : ' · not fired yet')));
           const c = el('button', 'small', 'Cancel');
           c.onclick = async () => { if (!confirm(`Stop "${r.title}"?`)) return; const { error } = await supabase.rpc('akatsuki_broadcast_rule_cancel', { p_id: r.id }); if (error) alert(error.message); render(); };
           it.append(tx, c); box.appendChild(it);
