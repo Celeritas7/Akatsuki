@@ -13,6 +13,9 @@
 // 2026-11-04 (Akatsuki hub, key migration): the user check now uses the new
 // publishable key, falling back to the legacy anon key, so it keeps working
 // after the legacy JWT keys are disabled.  Nothing else changed.
+// 2026-11-04 (later): deployed with Verify JWT OFF (supabase functions deploy code-exec --no-verify-jwt), for the
+// JWT signing-key migration: the gateway check only understands the legacy JWT secret. The getUser() check
+// below is the gate.
 //
 // Contract with the client (cpp_playground.html):
 //   request : { source_code: string, stdin?: string }
