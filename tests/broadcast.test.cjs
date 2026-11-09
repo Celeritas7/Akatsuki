@@ -14,7 +14,7 @@ const path = require('node:path');
     window.rows=[{id:'1',title:'Soap',category:'shopping'},{id:'2',title:'Coffee',category:'shopping'},{id:'3',title:'Room',category:'cleaning'},{id:'4',title:'Legacy'}].map(r=>({...r,due_at:due,show_at:due,state:'scheduled'}));
     window.sb={from(table){
       const filters=[];
-      const q={select(){return q},eq(k,v){filters.push(r=>r[k]===v);return q},neq(k,v){filters.push(r=>r[k]!==v);return q},lte(){return q},order(){return q},limit(){return q},is(){return q},not(){return q},then(resolve){resolve({data:table==='akatsuki_broadcasts'?window.rows.filter(r=>filters.every(f=>f(r))):[],error:null})}};return q;
+      const q={select(){return q},eq(k,v){filters.push(r=>r[k]===v);return q},in(k,v){filters.push(r=>v.includes(r[k]));return q},neq(k,v){filters.push(r=>r[k]!==v);return q},lte(){return q},order(){return q},limit(){return q},is(){return q},not(){return q},then(resolve){resolve({data:table==='akatsuki_broadcasts'?window.rows.filter(r=>filters.every(f=>f(r))):[],error:null})}};return q;
     },async rpc(name,args){
       calls.push({name,args}); if(window.fail) return {error:{message:'Test save failure'}};
       if(name==='akatsuki_broadcast_create') return {data:'new'};
@@ -49,12 +49,12 @@ const path = require('node:path');
   await page.addScriptTag({path:path.resolve('js/akatsuki-broadcast-panel.js')});
   await page.evaluate(()=>window.panel=AkatsukiBroadcastPanel(sb).mount());
   await page.getByRole('button',{name:'Broadcasts',exact:true}).click();
-  await page.getByRole('button',{name:/Expense Review Add tasks here/}).click();
-  assert.equal(await page.getByRole('button',{name:/Expense Review Add tasks here/}).getAttribute('aria-pressed'),'true');
+  await page.locator('[data-category=expenses]').click();
+  await page.getByRole('button',{name:'+ Add rule',exact:true}).click();
   await page.getByLabel('Repeat',{exact:true}).first().selectOption('custom');
   await page.getByLabel('Every how many days?').fill('14');
   await page.getByLabel('Title',{exact:true}).fill('Receipt review');
-  await page.getByRole('button',{name:'Add broadcast',exact:true}).click();
+  await page.getByRole('button',{name:'Add rule',exact:true}).click();
   await page.waitForFunction(()=>calls.some(c=>c.name==='akatsuki_broadcast_create'));
   const create=await page.evaluate(()=>calls.find(c=>c.name==='akatsuki_broadcast_create'));
   assert.equal(create.args.p_category,'expenses');assert.equal(create.args.p_repeat_days,14);
