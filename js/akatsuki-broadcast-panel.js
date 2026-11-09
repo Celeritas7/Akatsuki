@@ -12,6 +12,7 @@
  */
 (function () {
   if (window.AkatsukiBroadcastPanel) return;
+  const CATEGORIES = { general: 'General', shopping: 'Shopping', cleaning: 'Cleaning', files: 'File Tasks', daily: 'Daily Repetition', expenses: 'Expense Review' };
   const CSS = `
     :host { all: initial; }
     .fab { position: fixed; right: 16px; z-index: 2147483000; width: 52px; height: 52px; border-radius: 50%; border: 1px solid #3a2d33;
@@ -95,8 +96,21 @@
       const box = sheet.querySelector('.box'); box.replaceChildren();
       const head = el('div', 'head'); head.append(el('h2', null, '📣 Broadcasts'));
       const x = el('button', 'small x', 'Close'); x.onclick = close; head.appendChild(x); box.appendChild(head);
-      box.appendChild(el('div', 'muted', 'At its time — or when you arrive at a place — a broadcast covers every app until you press Done or Snooze, and buzzes the phones switched on below.'));
+      box.appendChild(el('div', 'muted', 'At its time — or when you arrive at a place — a broadcast appears in every connected app until completed, skipped, or postponed, and buzzes the phones switched on below.'));
 
+      // One request key survives retries until this form is successfully submitted.
+      const requestId = crypto.randomUUID();
+      const category = el('select');
+      for (const [value, label] of Object.entries(CATEGORIES)) { const o = el('option', null, label); o.value = value; category.appendChild(o); }
+      const lc = el('label', null, 'Category'); lc.appendChild(category);
+      const repeat = el('select');
+      for (const [value, label] of [['0','Once'],['1','Daily'],['7','Weekly'],['custom','Custom interval']]) { const o = el('option', null, label); o.value = value; repeat.appendChild(o); }
+      const lr = el('label', null, 'Repeat'); lr.appendChild(repeat);
+      const days = el('input'); days.type = 'number'; days.min = '1'; days.max = '3650'; days.step = '1'; days.value = '14';
+      const ld = el('label', null, 'Every how many days?'); ld.appendChild(days); ld.hidden = true;
+      repeat.onchange = () => { ld.hidden = repeat.value !== 'custom'; };
+      const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Tokyo';
+      const recurrenceHint = el('div', 'muted', `Uses ${zone}. Unfinished items stay pending. After Done or Skip, the next future scheduled day is used.`);
       // add
       const t = el('input'); t.maxLength = 120; t.placeholder = 'What needs doing';
       const b = el('textarea'); b.maxLength = 1000; b.placeholder = 'Details (optional)';
@@ -135,7 +149,7 @@
       const lhb = el('label', null, 'Hub'); lhb.appendChild(hb);
       const lpl = el('label', null, 'Place'); lpl.appendChild(pl);
       const lmd = el('label', null, 'Repeat'); lmd.appendChild(md);
-      const showWhen = () => { const a = when.value === 'arrive'; lw.style.display = a ? 'none' : ''; lhb.style.display = lpl.style.display = lmd.style.display = a ? '' : 'none'; };
+      const showWhen = () => { const a = when.value === 'arrive'; lw.style.display = lr.style.display = recurrenceHint.style.display = a ? 'none' : ''; ld.hidden = a || repeat.value !== 'custom'; lc.style.display = a ? 'none' : ''; lhb.style.display = lpl.style.display = lmd.style.display = a ? '' : 'none'; };
       when.addEventListener('change', showWhen);
       // Say the picked time back in words: a picker left on today's date with an after-midnight time is easy to miss.
       const hint = el('div', 'muted');
@@ -163,12 +177,17 @@
         if (!w.value) { addMsg.textContent = 'Pick a due time.'; return; }
         if (new Date(w.value).getTime() < Date.now() - 60e3) { addMsg.textContent = 'That time has already passed — check the date.'; return; }
         add.disabled = true;
-        const { error } = await supabase.rpc('akatsuki_broadcast_add', { p_title: t.value, p_body: b.value || null, p_due_at: new Date(w.value).toISOString(), p_app: app });
+        const interval = Number(repeat.value === 'custom' ? days.value : repeat.value);
+        if (!Number.isInteger(interval) || interval < (repeat.value === 'custom' ? 1 : 0) || interval > 3650) { add.disabled = false; addMsg.textContent = 'Choose an interval of 1–3650 days.'; return; }
+        let error;
+        try {
+          ({ error } = await supabase.rpc('akatsuki_broadcast_create', { p_title: t.value, p_body: b.value || null, p_due_at: new Date(w.value).toISOString(), p_app: app, p_category: category.value, p_repeat_days: interval, p_timezone: zone, p_request_id: requestId }));
+        } catch (e) { error = e; }
         add.disabled = false;
         if (error) { addMsg.textContent = error.message; return; }
         render();
       };
-      box.append(lt, lb, lwhen, lw, lhb, lpl, lmd, add, addMsg); showWhen();
+      box.append(lt, lb, lc, lwhen, lw, lr, ld, recurrenceHint, lhb, lpl, lmd, add, addMsg); showWhen();
 
       // R062: arrival rules
       const { data: rules } = await supabase.from('akatsuki_broadcast_rules').select('id,place_id,area_id,title,mode,state,last_fired_at,fired_count')
@@ -187,25 +206,38 @@
       }
 
       // list
-      const { data: list, error } = await supabase.from('akatsuki_broadcasts').select('id,title,body,due_at,show_at,state,snoozes,done_at,done_by,push_note')
-        .order('show_at', { ascending: true }).limit(100);
+      const { data: list, error } = await supabase.from('akatsuki_broadcasts').select('id,title,body,due_at,show_at,state,snoozes,done_at,done_by,push_note,category,repeat_days')
+        .eq('state', 'scheduled').order('show_at', { ascending: true });
       box.appendChild(el('h3', null, 'Scheduled'));
       if (error) box.appendChild(el('div', 'msg', error.message));
       const sched = (list || []).filter(r => r.state === 'scheduled');
       if (!sched.length) box.appendChild(el('div', 'muted', 'Nothing scheduled.'));
-      for (const r of sched) {
-        const it = el('div', 'item'); const tx = el('div', 't'); tx.appendChild(el('b', null, r.title));
-        tx.appendChild(el('div', 'muted', (r.snoozes ? `snoozed to ${fmt(r.show_at)} · due ${fmt(r.due_at)}` : fmt(r.due_at)) + (r.push_note ? ' · ' + r.push_note : '')));
-        const c = el('button', 'small', 'Cancel');
-        c.onclick = async () => { if (!confirm(`Cancel "${r.title}"?`)) return; const { error } = await supabase.rpc('akatsuki_broadcast_cancel', { p_id: r.id }); if (error) alert(error.message); render(); };
-        it.append(tx, c); box.appendChild(it);
+      for (const [category, label] of Object.entries(CATEGORIES)) {
+        const grouped = sched.filter(r => (r.category || 'general') === category);
+        if (!grouped.length) continue;
+        box.appendChild(el('h3', null, `${label} · ${grouped.length}`));
+        for (const r of grouped) {
+          const it = el('div', 'item'); const tx = el('div', 't'); tx.appendChild(el('b', null, r.title));
+          tx.appendChild(el('div', 'muted', (r.snoozes ? `snoozed to ${fmt(r.show_at)} · due ${fmt(r.due_at)}` : fmt(r.due_at)) + (r.push_note ? ' · ' + r.push_note : '')));
+          const c = el('button', 'small', r.repeat_days ? 'Stop repeating' : 'Cancel');
+          c.onclick = async () => { if (!confirm(`Cancel "${r.title}"?`)) return; const { error } = await supabase.rpc('akatsuki_broadcast_cancel', { p_id: r.id }); if (error) alert(error.message); render(); };
+          tx.appendChild(el('div', 'muted', (Date.parse(r.show_at) <= Date.now() ? 'Pending' : 'Scheduled') + (r.repeat_days ? ` · every ${r.repeat_days} day(s)` : ' · once')));
+          const change = el('select'); change.setAttribute('aria-label', `Category for ${r.title}`);
+          for (const [value, label] of Object.entries(CATEGORIES)) { const o = el('option', null, label); o.value = value; change.appendChild(o); }
+          change.value = r.category || 'general';
+          change.onchange = async () => { change.disabled = true; const {error} = await supabase.rpc('akatsuki_broadcast_category', {p_id:r.id,p_category:change.value}); if(error) alert(error.message); render(); };
+          tx.appendChild(change);
+          it.append(tx, c); box.appendChild(it);
+        }
       }
-      const past = (list || []).filter(r => r.state !== 'scheduled').sort((a, b) => (b.done_at || b.due_at).localeCompare(a.done_at || a.due_at)).slice(0, 5);
+      const {data: history, error: historyError} = await supabase.from('akatsuki_broadcasts').select('id,title,state,done_at,done_by,due_at').neq('state','scheduled').order('updated_at',{ascending:false}).limit(10);
+      if (historyError) box.appendChild(el('div','msg',historyError.message));
+      const past = (history || []).filter(r => r.state !== 'scheduled').sort((a, b) => (b.done_at || b.due_at).localeCompare(a.done_at || a.due_at)).slice(0, 5);
       if (past.length) {
         box.appendChild(el('h3', null, 'Recent'));
         for (const r of past) {
           const it = el('div', 'item'); const tx = el('div', 't'); tx.appendChild(el('b', null, r.title));
-          tx.appendChild(el('div', 'muted', r.state === 'done' ? `done ${fmt(r.done_at)} in ${r.done_by || '?'}` : 'cancelled')); it.appendChild(tx); box.appendChild(it);
+          tx.appendChild(el('div', 'muted', r.state === 'done' ? `done ${fmt(r.done_at)} in ${r.done_by || '?'}` : r.state === 'skipped' ? 'skipped this occurrence' : 'cancelled')); it.appendChild(tx); box.appendChild(it);
         }
       }
 

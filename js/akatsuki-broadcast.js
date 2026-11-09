@@ -13,19 +13,20 @@
  *   · nothing expires: an app that was closed at the due time shows it the next time it opens
  *   · other tabs of the same site hear Done/Snooze at once (BroadcastChannel); other devices on their next read
  *   · signed out → shows nothing (no rows), never errors
- * Writes nothing but those two RPCs.  Styling is isolated in a shadow root; colours are the hub's.
+ * Actions use owner-checked RPCs, with recurrence created atomically on completion or skip.  Styling is isolated in a shadow root; colours are the hub's.
  */
 (function () {
   if (window.AkatsukiBroadcast) return;
   const HORIZON_MS = 6 * 3600e3, POLL_MS = 60e3;
   const SNOOZES = [[10, '10 min'], [60, '1 hour'], [180, '3 hours']];
+  const CATEGORIES = { general: 'General', shopping: 'Shopping', cleaning: 'Cleaning', files: 'File Tasks', daily: 'Daily Repetition', expenses: 'Expense Review' };
   const CSS = `
     :host { all: initial; }
     .veil { position: fixed; inset: 0; z-index: 2147483647; display: flex; align-items: center; justify-content: center;
       padding: max(24px, env(safe-area-inset-top)) 20px max(24px, env(safe-area-inset-bottom)); box-sizing: border-box;
       background: radial-gradient(120% 80% at 50% 0%, rgba(195,36,43,.28), rgba(7,5,10,.97) 60%), #07050a;
       color: #efe8e0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; overscroll-behavior: contain; }
-    .card { width: 100%; max-width: 520px; display: flex; flex-direction: column; gap: 18px; }
+    .card { max-height: calc(100dvh - 48px); overflow: auto; width: 100%; max-width: 520px; display: flex; flex-direction: column; gap: 18px; }
     .top { display: flex; align-items: center; gap: 10px; color: #bfb4aa; font-size: 13px; letter-spacing: .02em; }
     .moon { font-size: 22px; }
     h1 { margin: 0; font-size: clamp(26px, 7vw, 38px); line-height: 1.15; font-weight: 700; color: #fff; overflow-wrap: anywhere; }
@@ -41,6 +42,9 @@
     .snz { flex: 1 1 0; }
     .label { width: 100%; font-size: 12px; color: #bfb4aa; margin-top: 4px; }
     .err { min-height: 1em; font-size: 13px; color: #ffb4b4; }
+    .task { border-top: 1px solid #493039; padding: 18px 0; }
+    h2 { font-size: 20px; margin: 0 0 12px; overflow-wrap: anywhere; }
+    input { box-sizing: border-box; max-width: 100%; min-height: 44px; font: inherit; background: #1d161b; color: #fff; border: 1px solid #493039; border-radius: 8px; padding: 8px; }
     .count { margin-left: auto; }`;
 
   function fmtWhen(iso) {
@@ -84,8 +88,8 @@
     function render() {
       const list = due();
       if (!list.length) { unmount(); return; }
-      const b = list[0];
-      if (host && shownId === b.id && !busy) return;           // already showing this one
+      const signature = JSON.stringify(list);
+      if (host && shownId === signature) return;           // already showing this one
       mount(); lock(true);
       [...root.childNodes].forEach(n => { if (n.tagName !== 'STYLE') n.remove(); });
       const veil = el('div', 'veil');
@@ -93,46 +97,62 @@
       const card = el('div', 'card');
       const top = el('div', 'top');
       top.append(el('span', 'moon', '🌑'), el('span', null, 'Akatsuki broadcast'));
-      if (list.length > 1) top.appendChild(el('span', 'count', `1 of ${list.length}`));
-      const h = el('h1', null, b.title); h.id = 'akb-title';
-      card.append(top, h);
-      if (b.body) card.appendChild(el('p', null, b.body));
-      const when = el('div', 'when', 'Due ' + fmtWhen(b.due_at) + (b.snoozes ? ` · snoozed ${b.snoozes}×` : ''));
-      const late = lateBy(b.show_at); if (late) { const s = el('span', 'late', ' · ' + late); when.appendChild(s); }
-      card.appendChild(when);
-      card.appendChild(el('div', 'when', 'Stays on every app until you press Done or Snooze.'));
-      const err = el('div', 'err');
-      const row = el('div', 'row');
-      const done = el('button', 'done', 'Done');
-      done.onclick = () => act(b, () => supabase.rpc('akatsuki_broadcast_done', { p_id: b.id, p_app: app }), err, row);
-      row.appendChild(done);
-      row.appendChild(el('div', 'label', 'Snooze'));
-      for (const [m, label] of SNOOZES) {
-        const s = el('button', 'snz', label);
-        s.onclick = () => act(b, () => supabase.rpc('akatsuki_broadcast_snooze', { p_id: b.id, p_minutes: m }), err, row);
-        row.appendChild(s);
+      top.appendChild(el('span', 'count', `${list.length} pending`));
+      const heading = el('h1', null, 'Due broadcasts'); heading.id = 'akb-title';
+      card.append(top, heading);
+      for (const [category, label] of Object.entries(CATEGORIES)) {
+        const items = list.filter(b => (b.category || 'general') === category);
+        if (!items.length) continue;
+        card.appendChild(el('h2', null, `${label} · ${items.length}`));
+        for (const b of items) {
+          const task = el('section', 'task'); task.appendChild(el('h2', null, b.title));
+          if (b.body) task.appendChild(el('p', null, b.body));
+          task.appendChild(el('div', 'when', 'Due ' + fmtWhen(b.due_at) + (b.repeat_days ? ` · every ${b.repeat_days} day(s)` : '')));
+          const err = el('div', 'err'); err.setAttribute('role', 'status');
+          const row = el('div', 'row');
+          const done = el('button', 'done', 'Done');
+          done.onclick = () => act(b, () => supabase.rpc('akatsuki_broadcast_done', { p_id: b.id, p_app: app }), err, row);
+          row.appendChild(done);
+          for (const [m, label] of SNOOZES) {
+            const snooze = el('button', 'snz', label);
+            snooze.onclick = () => act(b, () => supabase.rpc('akatsuki_broadcast_snooze', { p_id: b.id, p_minutes: m }), err, row);
+            row.appendChild(snooze);
+          }
+          const atLabel = el('label', 'label', 'Remind me at');
+          const at = el('input'); at.type = 'datetime-local'; atLabel.appendChild(at);
+          const schedule = el('button', null, 'Schedule for…');
+          schedule.onclick = () => {
+            const date = new Date(at.value);
+            if (!at.value || !Number.isFinite(date.getTime()) || date <= new Date()) { err.textContent = 'Choose a future time.'; return; }
+            act(b, () => supabase.rpc('akatsuki_broadcast_reschedule', { p_id: b.id, p_at: date.toISOString() }), err, row);
+          };
+          const skip = el('button', null, 'Skip this occurrence');
+          skip.onclick = () => act(b, () => supabase.rpc('akatsuki_broadcast_skip', { p_id: b.id, p_app: app }), err, row);
+          row.append(atLabel, schedule, skip); task.append(row, err); card.appendChild(task);
+        }
       }
-      card.append(row, err);
       veil.appendChild(card);
       // Blocking: keep focus inside, swallow Escape.
       veil.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); }
         if (e.key === 'Tab') {
-          const f = [...root.querySelectorAll('button:not([disabled])')]; if (!f.length) return;
+          const f = [...root.querySelectorAll('button:not([disabled]), input:not([disabled])')]; if (!f.length) return;
           const i = f.indexOf(root.activeElement);
           if (e.shiftKey && i <= 0) { e.preventDefault(); f[f.length - 1].focus(); }
           else if (!e.shiftKey && i === f.length - 1) { e.preventDefault(); f[0].focus(); }
         }
       });
       root.appendChild(veil);
-      shownId = b.id;
-      setTimeout(() => done.focus(), 30);
-      if (!seen.has(b.id + b.show_at)) { seen.add(b.id + b.show_at); try { navigator.vibrate && navigator.vibrate([200, 100, 200]); } catch { /* not allowed before a tap */ } }
+      shownId = signature;
+      setTimeout(() => root?.querySelector('button')?.focus(), 30);
+      for (const b of list) {
+        if (!seen.has(b.id + b.show_at)) { seen.add(b.id + b.show_at); try { navigator.vibrate?.([200, 100, 200]); } catch { /* requires interaction */ } }
+      }
     }
 
     async function act(b, call, err, row) {
       if (busy) return;
-      busy = true; err.textContent = ''; row.querySelectorAll('button').forEach(x => (x.disabled = true));
+      busy = true; ++readVersion; err.textContent = ''; row.querySelectorAll('button').forEach(x => (x.disabled = true));
       try {
         const { error } = await call();
         if (error) throw error;
@@ -153,13 +173,17 @@
       if (next) nextTimer = setTimeout(() => render(), Math.min(next - now + 500, 2 ** 31 - 1));
     }
 
+    let readVersion = 0;
     async function read() {
+      if (busy) return;
+      const version = ++readVersion;
       try {
         const { data, error } = await supabase.from('akatsuki_broadcasts')
-          .select('id,title,body,due_at,show_at,snoozes,created_by')
+          .select('id,title,body,due_at,show_at,snoozes,created_by,category,repeat_days')
           .eq('state', 'scheduled').lte('show_at', new Date(Date.now() + HORIZON_MS).toISOString())
           .order('show_at').limit(50);
         if (error) throw error;
+        if (busy || version !== readVersion) return;
         rows = data || [];
       } catch (e) { if (opts.log !== false) console.warn('[ak broadcast] read failed', e.message || e); return; }
       if (!busy) render();
