@@ -1,0 +1,32 @@
+// npm install --no-save happy-dom@20.8.4
+// node tests/broadcast-dom.test.mjs
+const {Window} = await import(process.env.HAPPY_DOM_MODULE || 'happy-dom');
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+const window=new Window({url:'https://test.local'});const document=window.document;
+let rows=[['1','Soap','shopping'],['2','Coffee','shopping'],['3','Room','cleaning'],['4','Legacy',undefined]].map(([id,title,category])=>({id,title,category,due_at:new Date(Date.now()-1000).toISOString(),show_at:new Date(Date.now()-1000).toISOString(),state:'scheduled'}));
+let fail=false;const calls=[];
+const sb={from(table){const filters=[];const q={select(){return q},eq(k,v){filters.push(r=>r[k]===v);return q},neq(k,v){filters.push(r=>r[k]!==v);return q},lte(){return q},order(){return q},limit(){return q},is(){return q},not(){return q},then(resolve){resolve({data:table==='akatsuki_broadcasts'?rows.filter(r=>filters.every(f=>f(r))):[]})}};return q},async rpc(name,args){calls.push({name,args});if(fail)return {error:{message:'test failure'}};rows=rows.filter(r=>r.id!==args.p_id);return {error:null}}};
+const settle=()=>new Promise(resolve=>setTimeout(resolve,50));
+window.eval(fs.readFileSync('js/akatsuki-broadcast.js','utf8'));
+const broadcast=window.AkatsukiBroadcast(sb,'test');broadcast.start(3600000);await settle();
+const root=document.querySelector('[data-akatsuki-broadcast]').shadowRoot;
+const tasks=()=>[...root.querySelectorAll('.task')];
+const task=title=>tasks().find(t=>t.querySelector('h2').textContent===title);
+const button=(target,label)=>[...target.querySelectorAll('button')].find(b=>b.textContent===label);
+assert.equal(tasks().length,4);assert(root.textContent.includes('Shopping · 2'));
+button(task('Soap'),'Done').click();await settle();assert.equal(tasks().length,3);assert(root.textContent.includes('Shopping · 1'));
+fail=true;button(task('Coffee'),'Done').click();await settle();assert.equal(tasks().length,3);assert(task('Coffee').textContent.includes('test failure'));
+fail=false;task('Room').querySelector('input').value='2090-01-01T09:00';button(task('Room'),'Schedule for…').click();await settle();assert.equal(tasks().length,2);
+button(task('Coffee'),'Skip this occurrence').click();await settle();assert.equal(tasks().length,1);assert(task('Legacy'));
+broadcast.stop();
+window.eval(fs.readFileSync('js/akatsuki-broadcast-panel.js','utf8'));
+const panel=window.AkatsukiBroadcastPanel(sb).mount();panel.open();await settle();
+const panelRoot=document.querySelector('[data-akatsuki-broadcast-panel]').shadowRoot;
+const input=label=>[...panelRoot.querySelectorAll('label')].find(l=>l.firstChild.textContent===label)?.querySelector('input,select');
+input('Title').value='Receipt review';input('Category').value='expenses';input('Repeat').value='custom';input('Repeat').dispatchEvent(new window.Event('change'));input('Every how many days?').value='14';
+button(panelRoot,'Add broadcast').click();await settle();
+const create=calls.find(c=>c.name==='akatsuki_broadcast_create');assert(create);assert.equal(create.args.p_category,'expenses');assert.equal(create.args.p_repeat_days,14);assert(create.args.p_request_id);
+assert(calls.some(c=>c.name==='akatsuki_broadcast_reschedule'));assert(calls.some(c=>c.name==='akatsuki_broadcast_skip'));
+console.log('PASS DOM tests: grouped rendering, legacy rows, individual completion, failed saves, reschedule, skip, custom recurring creation');
+await window.happyDOM.abort();

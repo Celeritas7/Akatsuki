@@ -1,0 +1,64 @@
+// Run with node tests/broadcast.test.cjs (Playwright and Chromium required).
+const {chromium} = require('playwright');
+const assert = require('node:assert/strict');
+const path = require('node:path');
+(async () => {
+  const browser = await chromium.launch({headless:true, executablePath:process.env.CHROMIUM_PATH || '/usr/bin/chromium', args:['--no-sandbox']});
+  const page = await browser.newPage({viewport:{width:390,height:844}});
+  const errors = []; page.on('pageerror', e => errors.push(e.message));
+  await page.route('http://broadcast.test/**', route => route.fulfill({contentType:'text/html',body:'<!doctype html><html><body></body></html>'}));
+  await page.goto('http://broadcast.test');
+  await page.evaluate(() => {
+    window.calls=[]; window.fail=false;
+    const due = new Date(Date.now()-60000).toISOString();
+    window.rows=[{id:'1',title:'Soap',category:'shopping'},{id:'2',title:'Coffee',category:'shopping'},{id:'3',title:'Room',category:'cleaning'},{id:'4',title:'Legacy'}].map(r=>({...r,due_at:due,show_at:due,state:'scheduled'}));
+    window.sb={from(table){
+      const filters=[];
+      const q={select(){return q},eq(k,v){filters.push(r=>r[k]===v);return q},neq(k,v){filters.push(r=>r[k]!==v);return q},lte(){return q},order(){return q},limit(){return q},is(){return q},not(){return q},then(resolve){resolve({data:table==='akatsuki_broadcasts'?window.rows.filter(r=>filters.every(f=>f(r))):[],error:null})}};return q;
+    },async rpc(name,args){
+      calls.push({name,args}); if(window.fail) return {error:{message:'Test save failure'}};
+      if(name==='akatsuki_broadcast_create') return {data:'new'};
+      rows=rows.filter(r=>r.id!==args.p_id); return {error:null};
+    }};
+    Object.defineProperty(window.crypto,'randomUUID',{value:()=> '11111111-1111-4111-8111-111111111111'});
+  });
+  await page.addScriptTag({path:path.resolve('js/akatsuki-broadcast.js')});
+  await page.evaluate(()=>window.broadcast=AkatsukiBroadcast(sb,'test'));
+  await page.evaluate(()=>broadcast.start(3600000));
+  await page.getByRole('heading',{name:'Shopping · 2'}).waitFor();
+  assert.equal(await page.locator('section.task').count(),4);
+  await page.locator('section.task').filter({hasText:'Soap'}).getByRole('button',{name:'Done',exact:true}).click();
+  await page.getByRole('heading',{name:'Shopping · 1'}).waitFor();
+  assert.equal(await page.locator('section.task').count(),3);
+  await page.evaluate(()=>window.fail=true);
+  await page.locator('section.task').filter({hasText:'Coffee'}).getByRole('button',{name:'Done',exact:true}).click();
+  await page.getByRole('status').filter({hasText:'Test save failure'}).waitFor();
+  assert.equal(await page.locator('section.task').count(),3);
+  await page.evaluate(()=>window.fail=false);
+  const room=page.locator('section.task').filter({hasText:'Room'});
+  await room.locator('input').fill('2090-01-01T09:00');
+  await room.getByRole('button',{name:'Schedule for…'}).click();
+  await page.getByRole('heading',{name:'Cleaning · 1'}).waitFor({state:'detached'});
+  await page.locator('section.task').filter({hasText:'Coffee'}).getByRole('button',{name:'Skip this occurrence'}).click();
+  await page.getByRole('heading',{name:'Shopping · 1'}).waitFor({state:'detached'});
+  assert.equal(await page.locator('section.task').count(),1);
+  const calls=await page.evaluate(()=>window.calls);
+  assert(calls.some(c=>c.name==='akatsuki_broadcast_reschedule'));
+  assert(calls.some(c=>c.name==='akatsuki_broadcast_skip'));
+  await page.evaluate(()=>broadcast.stop());
+  await page.addScriptTag({path:path.resolve('js/akatsuki-broadcast-panel.js')});
+  await page.evaluate(()=>window.panel=AkatsukiBroadcastPanel(sb).mount());
+  await page.getByRole('button',{name:'Broadcasts',exact:true}).click();
+  await page.getByLabel('Category',{exact:true}).selectOption('expenses');
+  await page.getByLabel('Repeat',{exact:true}).first().selectOption('custom');
+  await page.getByLabel('Every how many days?').fill('14');
+  await page.getByLabel('Title',{exact:true}).fill('Receipt review');
+  await page.getByRole('button',{name:'Add broadcast',exact:true}).click();
+  await page.waitForFunction(()=>calls.some(c=>c.name==='akatsuki_broadcast_create'));
+  const create=await page.evaluate(()=>calls.find(c=>c.name==='akatsuki_broadcast_create'));
+  assert.equal(create.args.p_category,'expenses');assert.equal(create.args.p_repeat_days,14);
+  assert(create.args.p_request_id);assert(create.args.p_timezone);
+  assert.deepEqual(errors,[]);
+  console.log('PASS mobile grouped display, independent completion, failed-save retention, scheduling, skip, legacy rows, custom recurrence creation');
+  await browser.close();
+})().catch(e=>{console.error(e);process.exit(1)});
