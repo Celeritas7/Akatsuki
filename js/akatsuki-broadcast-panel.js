@@ -33,7 +33,21 @@
     .item { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; border-top: 1px solid #221a1f; }
     .item .t { flex: 1; min-width: 0; } .item .t b { display: block; overflow-wrap: anywhere; }
     .muted { color: #9d9188; font-size: 12px; } .msg { min-height: 1em; font-size: 13px; color: #e8a0a0; }
-    .ok { color: #9be3a9; } .rowb { display: flex; gap: 8px; flex-wrap: wrap; }`;
+    .ok { color: #9be3a9; } .rowb { display: flex; gap: 8px; flex-wrap: wrap; }
+    .folders { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .folder { position: relative; min-height: 64px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 3px; text-align: left; }
+    .folder::before { content: ''; position: absolute; top: -5px; left: 10px; width: 30px; height: 6px; border: 1px solid #3a2d33; border-bottom: 0; border-radius: 5px 5px 0 0; background: #1d161b; }
+    .folder[aria-pressed='true'] { background: #c3242b; border-color: #e64a50; color: #fff; }
+    .folder[aria-pressed='true']::before { background: #c3242b; border-color: #e64a50; }
+    .folder span { font-size: 12px; font-weight: 400; color: #bfb4aa; }
+    .folder[aria-pressed='true'] span { color: #fff; }
+    details.task-folder { border: 1px solid #2a2127; border-radius: 12px; overflow: hidden; background: #120e12; }
+    details.task-folder > summary { cursor: pointer; list-style: none; min-height: 48px; padding: 0 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-weight: 700; }
+    details.task-folder > summary::-webkit-details-marker { display: none; }
+    details.task-folder > summary::after { content: '+'; color: #bfb4aa; font-size: 20px; }
+    details.task-folder[open] > summary::after { content: '−'; }
+    .folder-items { padding: 0 12px 8px; }
+    @media (min-width: 480px) { .folders { grid-template-columns: repeat(3, minmax(0, 1fr)); } }`;
 
   const pad = (n) => String(n).padStart(2, '0');
   const localInput = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
@@ -100,9 +114,21 @@
 
       // One request key survives retries until this form is successfully submitted.
       const requestId = crypto.randomUUID();
-      const category = el('select');
-      for (const [value, label] of Object.entries(CATEGORIES)) { const o = el('option', null, label); o.value = value; category.appendChild(o); }
-      const lc = el('label', null, 'Category'); lc.appendChild(category);
+      const category = el('input'); category.type = 'hidden'; category.value = 'general';
+      const lc = el('fieldset'); lc.style.cssText = 'border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:10px';
+      const categoryLegend = el('legend', null, 'Choose a task folder'); categoryLegend.style.cssText = 'padding:0 0 10px;font-size:13px;color:#bfb4aa'; lc.appendChild(categoryLegend);
+      const folders = el('div', 'folders');
+      for (const [value, label] of Object.entries(CATEGORIES)) {
+        const folder = el('button', 'folder'); folder.type = 'button'; folder.dataset.category = value;
+        folder.setAttribute('aria-pressed', String(value === category.value));
+        folder.append(document.createTextNode(label), el('span', null, 'Add tasks here'));
+        folder.onclick = () => {
+          category.value = value;
+          folders.querySelectorAll('.folder').forEach(button => button.setAttribute('aria-pressed', String(button === folder)));
+        };
+        folders.appendChild(folder);
+      }
+      lc.append(folders, category);
       const repeat = el('select');
       for (const [value, label] of [['0','Once'],['1','Daily'],['7','Weekly'],['custom','Custom interval']]) { const o = el('option', null, label); o.value = value; repeat.appendChild(o); }
       const lr = el('label', null, 'Repeat'); lr.appendChild(repeat);
@@ -208,38 +234,43 @@
       // list
       const { data: list, error } = await supabase.from('akatsuki_broadcasts').select('id,title,body,due_at,show_at,state,snoozes,done_at,done_by,push_note,category,repeat_days')
         .eq('state', 'scheduled').order('show_at', { ascending: true });
-      box.appendChild(el('h3', null, 'Scheduled'));
+      box.appendChild(el('h3', null, 'Task folders'));
       if (error) box.appendChild(el('div', 'msg', error.message));
       const sched = (list || []).filter(r => r.state === 'scheduled');
-      if (!sched.length) box.appendChild(el('div', 'muted', 'Nothing scheduled.'));
       for (const [category, label] of Object.entries(CATEGORIES)) {
         const grouped = sched.filter(r => (r.category || 'general') === category);
-        if (!grouped.length) continue;
-        box.appendChild(el('h3', null, `${label} · ${grouped.length}`));
+        const folder = el('details', 'task-folder');
+        const summary = el('summary'); summary.append(el('span', null, label), el('span', 'muted', `${grouped.length} remaining`)); folder.appendChild(summary);
+        const items = el('div', 'folder-items');
+        if (!grouped.length) items.appendChild(el('div', 'muted', 'No remaining tasks in this folder.'));
         for (const r of grouped) {
           const it = el('div', 'item'); const tx = el('div', 't'); tx.appendChild(el('b', null, r.title));
           tx.appendChild(el('div', 'muted', (r.snoozes ? `snoozed to ${fmt(r.show_at)} · due ${fmt(r.due_at)}` : fmt(r.due_at)) + (r.push_note ? ' · ' + r.push_note : '')));
           const c = el('button', 'small', r.repeat_days ? 'Stop repeating' : 'Cancel');
           c.onclick = async () => { if (!confirm(`Cancel "${r.title}"?`)) return; const { error } = await supabase.rpc('akatsuki_broadcast_cancel', { p_id: r.id }); if (error) alert(error.message); render(); };
           tx.appendChild(el('div', 'muted', (Date.parse(r.show_at) <= Date.now() ? 'Pending' : 'Scheduled') + (r.repeat_days ? ` · every ${r.repeat_days} day(s)` : ' · once')));
-          const change = el('select'); change.setAttribute('aria-label', `Category for ${r.title}`);
-          for (const [value, label] of Object.entries(CATEGORIES)) { const o = el('option', null, label); o.value = value; change.appendChild(o); }
+          const change = el('select'); change.setAttribute('aria-label', `Move ${r.title} to folder`);
+          for (const [value, folderLabel] of Object.entries(CATEGORIES)) { const o = el('option', null, folderLabel); o.value = value; change.appendChild(o); }
           change.value = r.category || 'general';
           change.onchange = async () => { change.disabled = true; const {error} = await supabase.rpc('akatsuki_broadcast_category', {p_id:r.id,p_category:change.value}); if(error) alert(error.message); render(); };
           tx.appendChild(change);
-          it.append(tx, c); box.appendChild(it);
+          it.append(tx, c); items.appendChild(it);
         }
+        folder.appendChild(items); box.appendChild(folder);
       }
-      const {data: history, error: historyError} = await supabase.from('akatsuki_broadcasts').select('id,title,state,done_at,done_by,due_at').neq('state','scheduled').order('updated_at',{ascending:false}).limit(10);
+      const {data: history, error: historyError} = await supabase.from('akatsuki_broadcasts').select('id,title,state,done_at,done_by,due_at,category').neq('state','scheduled').order('updated_at',{ascending:false}).limit(100);
       if (historyError) box.appendChild(el('div','msg',historyError.message));
-      const past = (history || []).filter(r => r.state !== 'scheduled').sort((a, b) => (b.done_at || b.due_at).localeCompare(a.done_at || a.due_at)).slice(0, 5);
-      if (past.length) {
-        box.appendChild(el('h3', null, 'Recent'));
-        for (const r of past) {
-          const it = el('div', 'item'); const tx = el('div', 't'); tx.appendChild(el('b', null, r.title));
-          tx.appendChild(el('div', 'muted', r.state === 'done' ? `done ${fmt(r.done_at)} in ${r.done_by || '?'}` : r.state === 'skipped' ? 'skipped this occurrence' : 'cancelled')); it.appendChild(tx); box.appendChild(it);
-        }
+      const past = (history || []).filter(r => r.state !== 'scheduled').sort((a, b) => (b.done_at || b.due_at).localeCompare(a.done_at || a.due_at));
+      const archive = el('details', 'task-folder');
+      const archiveSummary = el('summary'); archiveSummary.append(el('span', null, 'Archive'), el('span', 'muted', `${past.length} completed or closed`)); archive.appendChild(archiveSummary);
+      const archiveItems = el('div', 'folder-items');
+      if (!past.length) archiveItems.appendChild(el('div', 'muted', 'The archive is empty.'));
+      for (const r of past) {
+        const it = el('div', 'item'); const tx = el('div', 't'); tx.appendChild(el('b', null, r.title));
+        const folderLabel = CATEGORIES[r.category || 'general'] || CATEGORIES.general;
+        tx.appendChild(el('div', 'muted', `${folderLabel} · ` + (r.state === 'done' ? `done ${fmt(r.done_at)} in ${r.done_by || '?'}` : r.state === 'skipped' ? 'skipped this occurrence' : 'cancelled'))); it.appendChild(tx); archiveItems.appendChild(it);
       }
+      archive.appendChild(archiveItems); box.appendChild(archive);
 
       // push
       box.appendChild(el('h3', null, 'Phone notifications'));
