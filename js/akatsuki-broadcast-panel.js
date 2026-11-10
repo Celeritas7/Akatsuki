@@ -117,7 +117,7 @@
       const back = el('button', 'small', editor ? '← Back to folder' : '← All folders');
       back.onclick = () => navigate(editor ? folderId : null);
       if (folderId) box.appendChild(back);
-      const head = el('div', 'head'); head.append(el('h2', null, editor ? (editor.id ? 'Edit ' : 'Add ') + (editor.kind === 'rule' ? 'rule' : 'task') : (CATEGORIES[folderId] || '📣 Broadcasts')));
+      const head = el('div', 'head'); head.append(el('h2', null, editor ? (editor.id ? 'Edit ' : 'Add ') + (editor.kind !== 'task' ? 'rule' : 'task') : (CATEGORIES[folderId] || '📣 Broadcasts')));
       const x = el('button', 'small x', 'Close'); x.onclick = close; head.appendChild(x); box.appendChild(head);
       box.appendChild(el('div', 'muted', 'At its time — or when you arrive at a place — a broadcast appears in every connected app until completed, skipped, or postponed, and buzzes the phones switched on below.'));
 
@@ -169,13 +169,14 @@
         const t = el('input'); t.maxLength = 120; t.placeholder = 'What needs doing'; t.value = editing.title || '';
         const b = el('textarea'); b.maxLength = 1000; b.placeholder = 'Details (optional)'; b.value = editing.body || '';
         const w = el('input'); w.type = 'datetime-local';
-        const soon = new Date(Date.now() + 3600e3); soon.setMinutes(Math.ceil(soon.getMinutes() / 5) * 5, 0, 0); w.value = localInput(editing.id ? new Date(editing.due_at) : soon);
+        const soon = new Date(Date.now() + 3600e3); soon.setMinutes(Math.ceil(soon.getMinutes() / 5) * 5, 0, 0); w.value = localInput(editing.id ? new Date(editing.due_at || soon) : soon);
         const lt = el('label', null, 'Title'); lt.appendChild(t);
         const lb = el('label', null, 'Message'); lb.appendChild(b);
         const lw = el('label', null, 'Due'); lw.appendChild(w);
         // R062: when = a time, or arrival at a saved place
         const when = el('select'); [['time', 'At a time'], ['arrive', 'When I arrive at a place']].forEach(([v, l]) => { const o = el('option', null, l); o.value = v; when.appendChild(o); });
-        if (folderId !== 'general' || editing.id) when.querySelector('option[value=arrive]').remove();
+        if (folderId !== 'general' || (editing.id && editing.kind !== 'arrival')) when.querySelector('option[value=arrive]').remove();
+        if (editing.kind === 'arrival') { when.value = 'arrive'; when.disabled = true; }
         const lwhen = el('label', null, 'When'); lwhen.appendChild(when);
         const pl = el('select'), md = el('select');
         [['daily_first', 'First arrival of each day'], ['once', 'Next arrival only']].forEach(([v, l]) => { const o = el('option', null, l); o.value = v; md.appendChild(o); });
@@ -184,7 +185,8 @@
         const hubs = HUBS.filter(h => targets.some(p => p.hub === h.id));
         if (targets.some(p => p.hub === 'other')) hubs.push({ id: 'other', label: '🌐 Other' });
         const hb = el('select'); hubs.forEach(h => { const o = el('option', null, h.label); o.value = h.id; hb.appendChild(o); });
-        const saved = hubGet(); hb.value = hubs.some(h => h.id === saved) ? saved : (hubs[0] ? hubs[0].id : '');
+        if (editing.kind === 'arrival') md.value = editing.mode;
+        const saved = editing.kind === 'arrival' ? targets.find(p => p.key === (editing.area_id ? 'a:' + editing.area_id : 'p:' + editing.place_id))?.hub : hubGet(); hb.value = hubs.some(h => h.id === saved) ? saved : (hubs[0] ? hubs[0].id : '');
         const fillPlaces = () => {
           pl.replaceChildren();
           for (const [name, list] of [['My places', places || []], ['Areas', areas]]) {
@@ -197,6 +199,7 @@
         };
         hb.addEventListener('change', () => { hubSet(hb.value); fillPlaces(); });
         fillPlaces();
+        if (editing.kind === 'arrival') pl.value = editing.area_id ? 'a:' + editing.area_id : 'p:' + editing.place_id;
         const lhb = el('label', null, 'Hub'); lhb.appendChild(hb);
         const lpl = el('label', null, 'Place'); lpl.appendChild(pl);
         const lmd = el('label', null, 'Repeat'); lmd.appendChild(md);
@@ -220,7 +223,13 @@
             if (!pl.value) { addMsg.textContent = 'Pick a place.'; return; }
             add.disabled = true;
             const isArea = pl.value.startsWith('a:'), id = pl.value.slice(2);
-            const r = await supabase.rpc('akatsuki_broadcast_rule_add', { p_place_id: isArea ? null : id, p_area_id: isArea ? id : null, p_title: t.value, p_body: b.value || null, p_mode: md.value, p_app: app });
+            let r;
+            try {
+              const args = { p_place_id: isArea ? null : id, p_area_id: isArea ? id : null, p_title: t.value, p_body: b.value || null, p_mode: md.value };
+              r = editing.kind === 'arrival'
+                ? await supabase.rpc('akatsuki_broadcast_rule_edit', {...args, p_id: editing.id})
+                : await supabase.rpc('akatsuki_broadcast_rule_add', {...args, p_app: app});
+            } catch (error) { r = {error}; }
             add.disabled = false;
             if (r.error) { addMsg.textContent = r.error.message; return; }
             navigate(folderId); return;
@@ -245,7 +254,7 @@
       }
 
       // R062: arrival rules
-      const { data: rules } = await supabase.from('akatsuki_broadcast_rules').select('id,place_id,area_id,title,mode,state,last_fired_at,fired_count')
+      const { data: rules } = await supabase.from('akatsuki_broadcast_rules').select('id,place_id,area_id,title,body,mode,state,last_fired_at,fired_count')
         .eq('state', 'active').order('created_at');
       if (!current()) return;
       if (folderId === 'general' && (rules || []).length) {
@@ -255,9 +264,12 @@
         for (const r of rules) {
           const it = el('div', 'item'); const tx = el('div', 't'); tx.appendChild(el('b', null, r.title));
           tx.appendChild(el('div', 'muted', `${label(r)} · ${r.mode === 'once' ? 'next arrival only' : 'first arrival each day'}` + (r.last_fired_at ? ` · last ${fmt(r.last_fired_at)}` : ' · not fired yet')));
+          const controls = el('div', 'actions');
+          const edit = el('button', 'small', 'Edit');
+          edit.onclick = () => navigate('general', {...r, kind:'arrival'});
           const c = el('button', 'small', 'Cancel');
           c.onclick = async () => { if (!confirm(`Stop "${r.title}"?`)) return; const { error } = await supabase.rpc('akatsuki_broadcast_rule_cancel', { p_id: r.id }); if (error) alert(error.message); render(); };
-          it.append(tx, c); box.appendChild(it);
+          controls.append(edit, c); tx.appendChild(controls); it.append(tx); box.appendChild(it);
         }
       }
 
