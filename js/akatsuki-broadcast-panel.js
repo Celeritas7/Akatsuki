@@ -164,6 +164,8 @@
         const ld = el('label', null, 'Every how many days?'); ld.appendChild(days); ld.hidden = true;
         repeat.onchange = () => { ld.hidden = repeat.value !== 'custom'; };
         const zone = editing.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Tokyo';
+        const conversionHint = el('div', 'muted', 'Saving as a timed reminder stops this arrival rule and replaces its pending arrival messages. Completed history is kept.');
+        conversionHint.hidden = true;
         const recurrenceHint = el('div', 'muted', `Uses ${zone}. Unfinished items stay pending. After Done or Skip, the next future scheduled day is used.`);
         // add
         const t = el('input'); t.maxLength = 120; t.placeholder = 'What needs doing'; t.value = editing.title || '';
@@ -176,7 +178,7 @@
         // R062: when = a time, or arrival at a saved place
         const when = el('select'); [['time', 'At a time'], ['arrive', 'When I arrive at a place']].forEach(([v, l]) => { const o = el('option', null, l); o.value = v; when.appendChild(o); });
         if (folderId !== 'general' || (editing.id && editing.kind !== 'arrival')) when.querySelector('option[value=arrive]').remove();
-        if (editing.kind === 'arrival') { when.value = 'arrive'; when.disabled = true; }
+        if (editing.kind === 'arrival') { when.value = 'arrive'; }
         const lwhen = el('label', null, 'When'); lwhen.appendChild(when);
         const pl = el('select'), md = el('select');
         [['daily_first', 'First arrival of each day'], ['once', 'Next arrival only']].forEach(([v, l]) => { const o = el('option', null, l); o.value = v; md.appendChild(o); });
@@ -203,7 +205,7 @@
         const lhb = el('label', null, 'Hub'); lhb.appendChild(hb);
         const lpl = el('label', null, 'Place'); lpl.appendChild(pl);
         const lmd = el('label', null, 'Repeat'); lmd.appendChild(md);
-        const showWhen = () => { const a = when.value === 'arrive'; lw.style.display = lr.style.display = recurrenceHint.style.display = a ? 'none' : ''; ld.hidden = a || repeat.value !== 'custom'; lhb.style.display = lpl.style.display = lmd.style.display = a ? '' : 'none'; };
+        const showWhen = () => { const a = when.value === 'arrive'; conversionHint.hidden = editing.kind !== 'arrival' || a; lw.style.display = lr.style.display = recurrenceHint.style.display = a ? 'none' : ''; ld.hidden = a || repeat.value !== 'custom'; lhb.style.display = lpl.style.display = lmd.style.display = a ? '' : 'none'; };
         when.addEventListener('change', showWhen);
         // Say the picked time back in words: a picker left on today's date with an after-midnight time is easy to miss.
         const hint = el('div', 'muted');
@@ -235,13 +237,15 @@
             navigate(folderId); return;
           }
           if (!w.value) { addMsg.textContent = 'Pick a due time.'; return; }
-          if (!editing.id && new Date(w.value).getTime() < Date.now() - 60e3) { addMsg.textContent = 'That time has already passed — check the date.'; return; }
+          if ((!editing.id || editing.kind === 'arrival') && new Date(w.value).getTime() < Date.now() - 60e3) { addMsg.textContent = 'That time has already passed — check the date.'; return; }
           add.disabled = true;
           const interval = Number(repeat.value === 'custom' ? days.value : repeat.value);
           if (!Number.isInteger(interval) || interval < (repeat.value === 'custom' ? 1 : 0) || interval > 3650) { add.disabled = false; addMsg.textContent = 'Choose an interval of 1–3650 days.'; return; }
           let error;
           try {
-            if (editing.id) {
+            if (editing.kind === 'arrival') {
+              ({error} = await supabase.rpc('akatsuki_broadcast_rule_to_time', {p_id:editing.id,p_title:t.value,p_body:b.value,p_due_at:new Date(w.value).toISOString(),p_repeat_days:interval,p_timezone:zone,p_app:app}));
+            } else if (editing.id) {
               ({error} = await supabase.rpc('akatsuki_broadcast_manage', {p_id:editing.id,p_action:'edit',p_title:t.value,p_body:b.value,p_due_at:w.value === localInput(new Date(editing.due_at)) ? editing.due_at : new Date(w.value).toISOString(),p_repeat_days:interval}));
             } else ({ error } = await supabase.rpc('akatsuki_broadcast_create', { p_title: t.value, p_body: b.value || null, p_due_at: new Date(w.value).toISOString(), p_app: app, p_category: category.value, p_repeat_days: interval, p_timezone: zone, p_request_id: requestId }));
           } catch (e) { error = e; }
@@ -249,7 +253,7 @@
           if (error) { addMsg.textContent = error.message; return; }
           navigate(folderId);
         };
-        box.append(lt, lb, lwhen, lw, lr, ld, recurrenceHint, lhb, lpl, lmd, add, addMsg); showWhen();
+        box.append(lt, lb, lwhen, conversionHint, lw, lr, ld, recurrenceHint, lhb, lpl, lmd, add, addMsg); showWhen();
         return;
       }
 
