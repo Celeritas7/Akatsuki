@@ -17,7 +17,7 @@ const path = require('node:path');
       const q={select(){return q},eq(k,v){filters.push(r=>r[k]===v);return q},in(k,v){filters.push(r=>v.includes(r[k]));return q},neq(k,v){filters.push(r=>r[k]!==v);return q},lte(){return q},order(){return q},limit(){return q},is(){return q},not(){return q},then(resolve){resolve({data:table==='akatsuki_broadcasts'?window.rows.filter(r=>filters.every(f=>f(r))):[],error:null})}};return q;
     },async rpc(name,args){
       calls.push({name,args}); if(window.fail) return {error:{message:'Test save failure'}};
-      if(name==='akatsuki_broadcast_shown')return {error:null};
+      if(name==='akatsuki_broadcast_feed')return {data:rows.filter(r=>r.state==='scheduled'),error:null};if(name==='akatsuki_broadcast_shown')return {error:null};
       if(name==='akatsuki_broadcast_create') return {data:'new'};
       rows=rows.filter(r=>r.id!==args.p_id); return {error:null};
     }};

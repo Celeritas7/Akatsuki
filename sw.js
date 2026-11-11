@@ -31,6 +31,7 @@ self.addEventListener('fetch', e => {
 // the overlay there (and in every other app) is what gets answered.
 self.addEventListener('push', e => {
   let d = {}; try { d = e.data ? e.data.json() : {}; } catch { d = { title: 'Akatsuki', body: e.data ? e.data.text() : '' }; }
+  if (d.expires_at && new Date(d.expires_at).getTime() <= Date.now()) return;
   e.waitUntil(self.registration.showNotification(d.title || 'Akatsuki', {
     body: d.body || '', tag: d.tag || 'akatsuki', renotify: true, requireInteraction: true,
     icon: './assets/icon-192.png', badge: './assets/icon-192.png', data: { url: d.url || './#broadcast' }
