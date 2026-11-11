@@ -329,7 +329,39 @@
       }
       archive.appendChild(archiveItems); box.appendChild(archive);
 
+      // History is deliberately separate from Archive: it records repeated actions.
+      const eventResult = await supabase.from('akatsuki_task_events').select('id,event_type,happened_at,app,details,task_id').order('happened_at',{ascending:false}).limit(100);
+      if (!current()) return;
+      const log = el('details', 'task-folder'); log.appendChild(el('summary', null, 'Activity history'));
+      const logItems = el('div', 'folder-items');
+      if (eventResult.error) logItems.appendChild(el('div','msg',eventResult.error.message));
+      const events = (eventResult.data || []).filter(e => !folderId || (e.details?.category || 'general') === folderId);
+      if (!events.length && !eventResult.error) logItems.appendChild(el('div','muted','No activity recorded yet. History starts with this update.'));
+      for (const e of events) {
+        const item = el('div','item'); const tx = el('div','t');
+        tx.append(el('b',null,e.details?.title || 'Task'),el('div','muted',`${e.event_type.replaceAll('_',' ')} · ${fmt(e.happened_at)}${e.app ? ' · ' + e.app : ''}`));
+        if (e.event_type === 'snoozed' && e.details?.show_at) tx.appendChild(el('div','muted','Remind again: ' + fmt(e.details.show_at)));
+        item.appendChild(tx); logItems.appendChild(item);
+      }
+      log.appendChild(logItems); box.appendChild(log);
       if (folderId) return;
+      box.appendChild(el('h3',null,'Reminder settings'));
+      const settingResult = await supabase.from('akatsuki_reminder_settings').select('default_snooze_minutes').limit(1);
+      if (!current()) return;
+      const defaultMinutes = el('input'); defaultMinutes.type='number'; defaultMinutes.min='1'; defaultMinutes.max='10080'; defaultMinutes.step='1';
+      defaultMinutes.value=String(settingResult.data?.[0]?.default_snooze_minutes || 60);
+      const settingLabel=el('label',null,'Default snooze (minutes)'); settingLabel.appendChild(defaultMinutes);
+      const settingMsg=el('div','msg'); settingMsg.setAttribute('role','status');
+      if (settingResult.error) settingMsg.textContent=settingResult.error.message;
+      const saveSettings=el('button','small','Save snooze setting');
+      saveSettings.onclick=async()=>{
+        const minutes=Number(defaultMinutes.value);
+        if (!Number.isInteger(minutes)||minutes<1||minutes>10080) {settingMsg.textContent='Choose 1–10080 minutes.';return;}
+        saveSettings.disabled=true;settingMsg.textContent='';
+        try {const {error}=await supabase.rpc('akatsuki_reminder_settings_set',{p_minutes:minutes});if(error)throw error;settingMsg.textContent='Saved for all connected apps.';}
+        catch(e){settingMsg.textContent=e.message;} finally{saveSettings.disabled=false;}
+      };
+      box.append(settingLabel,el('div','muted','Used by Snooze and Do later. Starts at 60 minutes until you change it.'),saveSettings,settingMsg);
       // push
       box.appendChild(el('h3', null, 'Phone notifications'));
       const pm = el('div', 'msg'); const rowb = el('div', 'rowb');
