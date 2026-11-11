@@ -79,7 +79,7 @@
   function AkatsukiBroadcastPanel(supabase, opts = {}) {
     const app = opts.app || 'akatsuki';
     let host = null, root = null, sheet = null;
-    let folderId = null, editor = null, renderVersion = 0;
+    let folderId = null, editor = null, renderVersion = 0, sourceTask = null;
     function navigate(folder, form = null) { folderId = folder; editor = form; render(); }
     const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
 
@@ -125,7 +125,7 @@
       const current = () => sheet && version === renderVersion;
       const back = el('button', 'small', editor ? '← Back to folder' : '← All folders');
       back.onclick = () => navigate(editor ? folderId : null);
-      if (folderId) box.appendChild(back);
+      if (folderId && !sourceTask) box.appendChild(back);
       const head = el('div', 'head'); head.append(el('h2', null, editor ? (editor.id ? 'Edit ' : 'Add ') + (editor.kind !== 'task' ? 'rule' : 'task') : (CATEGORIES[folderId] || '📣 Broadcasts')));
       const x = el('button', 'small x', 'Close'); x.onclick = close; head.appendChild(x); box.appendChild(head);
       box.appendChild(el('div', 'muted', 'A broadcast appears when its time and place conditions match. Complete it, snooze it, or choose Skip. Unfinished windows use your default snooze.'));
@@ -166,6 +166,7 @@
       const areas = (areaRows || []).map(a => ({ ...a, key: 'a:' + a.id, hub: ({ JP: 'jp', IN: 'in', HK: 'hk' })[String(a.country || '').toUpperCase()] || hubOf(a) }));
       if (editor) {
         const editing = editor;
+        if(sourceTask) box.appendChild(el('div','schedule-summary',`From ${app} · ${sourceTask.status || 'Not scheduled'}${sourceTask.last_result?' · Last result: '+sourceTask.last_result:''}. This reminder tracks your task; it does not record a purchase or expense for you.`));
         const condition = editing.conditions;
         // One request key survives retries until this form is successfully submitted.
         const requestId = crypto.randomUUID();
@@ -207,7 +208,7 @@
         lw.append(shortcuts,dateRow,el('div','muted',`Date and time use this device's timezone: ${Intl.DateTimeFormat().resolvedOptions().timeZone}.`));
         // R062: when = a time, or arrival at a saved place
         const when = el('select'); [['time', 'At a time'], ['arrive', 'When I arrive at a place'], ['window', 'During a time window'], ['presence', 'At a place during a time window'], ['arrival_window', 'Arrive during a time window']].forEach(([v, l]) => { const o = el('option', null, l); o.value = v; when.appendChild(o); });
-        if (folderId !== 'general' || (editing.id && editing.kind !== 'arrival')) when.querySelector('option[value=arrive]').remove();
+        if (sourceTask || folderId !== 'general' || (editing.id && editing.kind !== 'arrival')) when.querySelector('option[value=arrive]').remove();
         if (editing.kind === 'arrival') { when.value = 'arrive'; }
         if (condition) when.value = ({time:'window',presence:'presence',arrival:'arrival_window'})[condition.mode];
         const lwhen = el('label', null, 'When'); lwhen.appendChild(when);
@@ -319,12 +320,14 @@
           let error;
           try {
             const combined=['window','presence','arrival_window'].includes(when.value);
-            if (combined || condition) {
+            if (sourceTask || combined || condition) {
               const selectedDays=dayChoices.filter(x=>x.checked).map(x=>Number(x.value));
               if (combined && (!fromTime.value||!toTime.value||fromTime.value===toTime.value||!selectedDays.length)) throw new Error('Choose different start/end times and at least one day.');
               if (combined && when.value!=='window' && !pl.value) throw new Error('Choose a place.');
               const c=combined?{mode:({window:'time',presence:'presence',arrival_window:'arrival'})[when.value],window_start:fromTime.value,window_end:toTime.value,weekdays:selectedDays,place_id:when.value!=='window'&&pl.value.startsWith('p:')?pl.value.slice(2):null,area_id:when.value!=='window'&&pl.value.startsWith('a:')?pl.value.slice(2):null}:null;
-              ({error}=await supabase.rpc('akatsuki_conditioned_save',{p_id:editing.kind==='arrival'?null:editing.id||null,p_arrival_id:editing.kind==='arrival'?editing.id:null,p_title:t.value,p_body:b.value,p_due_at:editing.due_at&&w.value===localInput(new Date(editing.due_at))?editing.due_at:new Date(w.value).toISOString(),p_repeat_days:interval,p_timezone:zone,p_category:folderId,p_app:app,p_request_id:requestId,p_conditions:c}));
+              if(sourceTask) {
+                ({error}=await supabase.rpc('akatsuki_app_task_save',{p_source_app:app,p_source_task_id:sourceTask.sourceTaskId,p_task_type:sourceTask.type||'other',p_source_url:sourceTask.url||null,p_title:t.value,p_body:b.value,p_due_at:editing.due_at&&w.value===localInput(new Date(editing.due_at))?editing.due_at:new Date(w.value).toISOString(),p_repeat_days:interval,p_timezone:zone,p_category:folderId,p_request_id:requestId,p_conditions:c,p_expected_id:editing.id||null}));
+              } else ({error}=await supabase.rpc('akatsuki_conditioned_save',{p_id:editing.kind==='arrival'?null:editing.id||null,p_arrival_id:editing.kind==='arrival'?editing.id:null,p_title:t.value,p_body:b.value,p_due_at:editing.due_at&&w.value===localInput(new Date(editing.due_at))?editing.due_at:new Date(w.value).toISOString(),p_repeat_days:interval,p_timezone:zone,p_category:folderId,p_app:app,p_request_id:requestId,p_conditions:c}));
             } else if (editing.kind === 'arrival') {
               ({error} = await supabase.rpc('akatsuki_broadcast_rule_to_time', {p_id:editing.id,p_title:t.value,p_body:b.value,p_due_at:new Date(w.value).toISOString(),p_repeat_days:interval,p_timezone:zone,p_app:app}));
             } else if (editing.id) {
@@ -333,7 +336,7 @@
           } catch (e) { error = e; }
           add.disabled = false;
           if (error) { addMsg.textContent = error.message; return; }
-          navigate(folderId);
+          if(sourceTask) { close(); opts.onSaved?.(); } else navigate(folderId);
         };
         const saveBar=el('div','save-bar');saveBar.append(add,addMsg);
         box.append(lt,lb,lwhen,conversionHint,lhb,lpl,lmd,lw,fromLabel,toLabel,dayPresets,weekBox,conditionHint,lr,ld,recurrenceHint,summary,saveBar);showWhen();updateSummary();
@@ -464,12 +467,13 @@
     }
 
     function open() {
+      sourceTask=null;
       if (sheet) return;
       sheet = el('div', 'sheet'); sheet.appendChild(el('div', 'box'));
       sheet.addEventListener('click', (e) => { if (e.target === sheet) close(); });
       folderId = null; editor = null; root.appendChild(sheet); render();
     }
-    function close() { ++renderVersion; if (sheet) { sheet.remove(); sheet = null; } }
+    function close() { sourceTask=null; ++renderVersion; if (sheet) { sheet.remove(); sheet = null; } }
 
     return {
       mount() {
@@ -479,12 +483,30 @@
         const s = document.createElement('style'); s.textContent = CSS; root.appendChild(s);
         const fab = el('button', 'fab', '📣'); fab.title = 'Broadcasts'; fab.setAttribute('aria-label', 'Broadcasts');
         fab.style.bottom = `calc(${opts.bottom ?? 16}px + env(safe-area-inset-bottom, 0px))`;
-        fab.onclick = open; root.appendChild(fab);
+        fab.onclick = open; if(!opts.hideLauncher) root.appendChild(fab);
         document.body.appendChild(host);
         if (location.hash === '#broadcast') open();
         return this;
       },
       unmount() { if (host) host.remove(); host = null; root = null; sheet = null; },
+      async openTask(seed) {
+        if(seed.sourceTaskId==null || !String(seed.sourceTaskId).trim()) throw new Error('Task ID required');
+        this.mount();close();open();
+        const version=++renderVersion;const box=sheet.querySelector('.box');box.replaceChildren(el('div','muted','Loading task status…'));
+        try {
+          const {data:status,error}=await supabase.from('akatsuki_task_status').select('*').eq('source_app',app).eq('source_task_id',String(seed.sourceTaskId)).maybeSingle();if(error) throw error;
+          if(!sheet||version!==renderVersion)return;
+          let row=null,c=null;
+          if(status?.occurrence_id && ['scheduled','pending','snoozed','paused','waiting_for_conditions'].includes(status.status)) {
+            const result=await supabase.from('akatsuki_broadcasts').select('*').eq('id',status.occurrence_id).maybeSingle();if(result.error)throw result.error;row=result.data;
+            if(!row || !['scheduled','paused'].includes(row.state))throw new Error('Task changed. Close and reopen to refresh.');
+            const cr=await supabase.from('akatsuki_task_conditions').select('*').eq('task_id',status.id).maybeSingle();if(cr.error)throw cr.error;c=cr.data;
+          }
+          if(!sheet||version!==renderVersion)return;
+          sourceTask={...seed,sourceTaskId:String(seed.sourceTaskId),status:status?.status,last_result:status?.last_result};
+          navigate(row?.category||seed.category||'general',row?{...row,conditions:c,kind:'task'}:{title:seed.title,body:seed.body||'',kind:'task'});
+        } catch(error) { if(sheet&&version===renderVersion){box.replaceChildren(el('div','msg',error.message||String(error)));const back=el('button',null,'Close');back.onclick=close;box.appendChild(back);} }
+      },
       open, close
     };
   }
