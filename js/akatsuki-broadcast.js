@@ -66,7 +66,7 @@
     const chan = 'BroadcastChannel' in window ? new BroadcastChannel('akatsuki-broadcast') : null;
     if (chan) chan.onmessage = () => read();
 
-    function due() { const now = Date.now(); return rows.filter(r => Date.parse(r.show_at) <= now); }
+    function due() { const now = Date.now(); return rows.filter(r => Date.parse(r.show_at) <= now && (!r.condition_valid_until || Date.parse(r.condition_valid_until)>now)); }
 
     function lock(on) {
       const b = document.body; if (!b) return;
@@ -194,8 +194,8 @@
     function arm() {
       clearTimeout(nextTimer); nextTimer = null;
       const now = Date.now();
-      const next = rows.map(r => Date.parse(r.show_at)).filter(t => t > now).sort((a, b) => a - b)[0];
-      if (next) nextTimer = setTimeout(() => render(), Math.min(next - now + 500, 2 ** 31 - 1));
+      const next = rows.flatMap(r => [Date.parse(r.show_at), Date.parse(r.condition_valid_until)]).filter(t => t > now).sort((a, b) => a - b)[0];
+      if (next) nextTimer = setTimeout(() => { render(); arm(); read(); }, Math.min(next - now + 50, 2 ** 31 - 1));
     }
 
     let readVersion = 0;
@@ -203,10 +203,7 @@
       if (busy) return;
       const version = ++readVersion;
       try {
-        const { data, error } = await supabase.from('akatsuki_broadcasts')
-          .select('id,title,body,due_at,show_at,snoozes,created_by,category,repeat_days')
-          .eq('state', 'scheduled').lte('show_at', new Date(Date.now() + HORIZON_MS).toISOString())
-          .order('show_at').limit(50);
+        const { data, error } = await supabase.rpc('akatsuki_broadcast_feed');
         if (error) throw error;
         if (busy || version !== readVersion) return;
         rows = data || [];

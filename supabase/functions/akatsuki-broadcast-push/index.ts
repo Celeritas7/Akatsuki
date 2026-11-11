@@ -46,11 +46,13 @@ async function vapid(): Promise<string> {
 }
 
 type Sub = { id: string; endpoint: string; p256dh: string; auth: string };
-async function deliver(subs: Sub[], message: Record<string, unknown>) {
+async function deliver(subs: Sub[], message: Record<string, unknown>, validUntil: string | null = null) {
   let ok = 0; const errors: string[] = [];
   for (const s of subs) {
     try {
-      await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, JSON.stringify(message), { TTL: 60 * 60 * 24, urgency: 'high' });
+      const remaining = validUntil ? Math.floor((Date.parse(validUntil) - Date.now()) / 1000) : 86400;
+      if (remaining <= 0) { errors.push('condition window expired'); continue; }
+      await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, JSON.stringify({...message, expires_at: validUntil}), { TTL: Math.min(86400, remaining), urgency: 'high' });
       ok++;
       await sb.from('akatsuki_push_subscriptions').update({ last_ok_at: new Date().toISOString(), last_error: null }).eq('id', s.id);
     } catch (e) {
@@ -75,10 +77,16 @@ Deno.serve(async (req) => {
     if (error) return json({ error: error.message }, 500);
     const out: { id: string; note: string }[] = [];
     for (const b of due || []) {
+      const {data: validity, error: validityError} = await sb.rpc('akatsuki_broadcast_push_validity', {p_id: b.id});
+      if (validityError || !validity?.eligible) {
+        // No send occurred: allow a later eligible check to claim this occurrence again.
+        await sb.from('akatsuki_broadcasts').update({pushed_for:null}).eq('id',b.id).eq('pushed_for',b.show_at);
+        out.push({id:b.id,note:'conditions no longer eligible'}); continue;
+      }
       const subs = await subsOf(b.user_id);
       let note = 'no device switched on for push';
       if (subs.length) {
-        const r = await deliver(subs, { title: '🌑 ' + b.title, body: b.body || 'Due now. Open any app to answer.', url: HUB_URL, tag: 'ak-bc-' + b.id, broadcast_id: b.id });
+        const r = await deliver(subs, { title: '🌑 ' + b.title, body: b.body || 'Due now. Open any app to answer.', url: HUB_URL, tag: 'ak-bc-' + b.id, broadcast_id: b.id }, validity.valid_until);
         note = `pushed ${r.ok}/${subs.length}` + (r.errors.length ? ' · ' + r.errors.join('; ') : '');
       }
       await sb.rpc('akatsuki_broadcast_push_note', { p_id: b.id, p_note: note + ' · ' + new Date().toISOString().slice(0, 16) + 'Z' });

@@ -27,6 +27,9 @@
     .head { display: flex; align-items: center; gap: 8px; } .head .x { margin-left: auto; }
     label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #bfb4aa; }
     input, textarea, select { font: inherit; font-size: 16px; color: #efe8e0; background: #1a1418; border: 1px solid #3a2d33; border-radius: 10px; padding: 10px 12px; }
+    fieldset { display:flex; flex-wrap:wrap; gap:8px; border:1px solid #3a2d33; border-radius:10px; margin:0; padding:10px; }
+    fieldset label { flex-direction:row; align-items:center; min-height:44px; padding:0 6px; }
+    fieldset input { width:20px; height:20px; accent-color:#c3242b; }
     textarea { min-height: 70px; resize: vertical; }
     button { font: inherit; font-size: 15px; font-weight: 600; min-height: 44px; padding: 0 14px; border-radius: 10px; border: 1px solid #3a2d33;
       background: #1d161b; color: #efe8e0; cursor: pointer; }
@@ -119,14 +122,19 @@
       if (folderId) box.appendChild(back);
       const head = el('div', 'head'); head.append(el('h2', null, editor ? (editor.id ? 'Edit ' : 'Add ') + (editor.kind !== 'task' ? 'rule' : 'task') : (CATEGORIES[folderId] || '📣 Broadcasts')));
       const x = el('button', 'small x', 'Close'); x.onclick = close; head.appendChild(x); box.appendChild(head);
-      box.appendChild(el('div', 'muted', 'At its time — or when you arrive at a place — a broadcast appears in every connected app until completed, skipped, or postponed, and buzzes the phones switched on below.'));
+      box.appendChild(el('div', 'muted', 'A broadcast appears when its time and place conditions match. Complete it, snooze it, or choose Skip. Unfinished windows use your default snooze.'));
 
       const { data: list, error } = await supabase.from('akatsuki_broadcasts')
-        .select('id,title,body,due_at,show_at,state,snoozes,done_at,done_by,push_note,category,repeat_days,timezone')
+        .select('id,title,body,due_at,show_at,state,snoozes,done_at,done_by,push_note,category,repeat_days,timezone,task_id')
         .in('state', ['scheduled', 'paused']).order('show_at');
       if (!current()) return;
       if (error) { box.appendChild(el('div', 'msg', error.message)); return; }
       const sched = list || [];
+      const conditionResult = await supabase.from('akatsuki_task_conditions').select('*');
+      if (!current()) return;
+      if (conditionResult.error) { box.appendChild(el('div','msg',conditionResult.error.message)); return; }
+      const conditions = conditionResult.data || [];
+      for (const row of sched) row.conditions = conditions.find(c => c.task_id === row.task_id) || null;
       if (!folderId) {
         const folders = el('div', 'folders');
         for (const [value, label] of Object.entries(CATEGORIES)) {
@@ -152,6 +160,7 @@
       const areas = (areaRows || []).map(a => ({ ...a, key: 'a:' + a.id, hub: ({ JP: 'jp', IN: 'in', HK: 'hk' })[String(a.country || '').toUpperCase()] || hubOf(a) }));
       if (editor) {
         const editing = editor;
+        const condition = editing.conditions;
         // One request key survives retries until this form is successfully submitted.
         const requestId = crypto.randomUUID();
         const category = {value: folderId};
@@ -176,9 +185,10 @@
         const lb = el('label', null, 'Message'); lb.appendChild(b);
         const lw = el('label', null, 'Due'); lw.appendChild(w);
         // R062: when = a time, or arrival at a saved place
-        const when = el('select'); [['time', 'At a time'], ['arrive', 'When I arrive at a place']].forEach(([v, l]) => { const o = el('option', null, l); o.value = v; when.appendChild(o); });
+        const when = el('select'); [['time', 'At a time'], ['arrive', 'When I arrive at a place'], ['window', 'During a time window'], ['presence', 'At a place during a time window'], ['arrival_window', 'Arrive during a time window']].forEach(([v, l]) => { const o = el('option', null, l); o.value = v; when.appendChild(o); });
         if (folderId !== 'general' || (editing.id && editing.kind !== 'arrival')) when.querySelector('option[value=arrive]').remove();
         if (editing.kind === 'arrival') { when.value = 'arrive'; }
+        if (condition) when.value = ({time:'window',presence:'presence',arrival:'arrival_window'})[condition.mode];
         const lwhen = el('label', null, 'When'); lwhen.appendChild(when);
         const pl = el('select'), md = el('select');
         [['daily_first', 'First arrival of each day'], ['once', 'Next arrival only']].forEach(([v, l]) => { const o = el('option', null, l); o.value = v; md.appendChild(o); });
@@ -188,7 +198,7 @@
         if (targets.some(p => p.hub === 'other')) hubs.push({ id: 'other', label: '🌐 Other' });
         const hb = el('select'); hubs.forEach(h => { const o = el('option', null, h.label); o.value = h.id; hb.appendChild(o); });
         if (editing.kind === 'arrival') md.value = editing.mode;
-        const saved = editing.kind === 'arrival' ? targets.find(p => p.key === (editing.area_id ? 'a:' + editing.area_id : 'p:' + editing.place_id))?.hub : hubGet(); hb.value = hubs.some(h => h.id === saved) ? saved : (hubs[0] ? hubs[0].id : '');
+        const saved = condition ? targets.find(p => p.key === (condition.area_id ? 'a:' + condition.area_id : 'p:' + condition.place_id))?.hub : editing.kind === 'arrival' ? targets.find(p => p.key === (editing.area_id ? 'a:' + editing.area_id : 'p:' + editing.place_id))?.hub : hubGet(); hb.value = hubs.some(h => h.id === saved) ? saved : (hubs[0] ? hubs[0].id : '');
         const fillPlaces = () => {
           pl.replaceChildren();
           for (const [name, list] of [['My places', places || []], ['Areas', areas]]) {
@@ -202,10 +212,27 @@
         hb.addEventListener('change', () => { hubSet(hb.value); fillPlaces(); });
         fillPlaces();
         if (editing.kind === 'arrival') pl.value = editing.area_id ? 'a:' + editing.area_id : 'p:' + editing.place_id;
+        if (condition && condition.mode !== 'time') pl.value = condition.area_id ? 'a:' + condition.area_id : 'p:' + condition.place_id;
         const lhb = el('label', null, 'Hub'); lhb.appendChild(hb);
         const lpl = el('label', null, 'Place'); lpl.appendChild(pl);
         const lmd = el('label', null, 'Repeat'); lmd.appendChild(md);
-        const showWhen = () => { const a = when.value === 'arrive'; conversionHint.hidden = editing.kind !== 'arrival' || a; lw.style.display = lr.style.display = recurrenceHint.style.display = a ? 'none' : ''; ld.hidden = a || repeat.value !== 'custom'; lhb.style.display = lpl.style.display = lmd.style.display = a ? '' : 'none'; };
+        const fromTime=el('input');fromTime.type='time';fromTime.value=condition?.window_start?.slice(0,5)||'18:00';
+        const toTime=el('input');toTime.type='time';toTime.value=condition?.window_end?.slice(0,5)||'22:00';
+        const fromLabel=el('label',null,'Window starts');fromLabel.appendChild(fromTime);
+        const toLabel=el('label',null,'Window ends');toLabel.appendChild(toTime);
+        const weekBox=el('fieldset');weekBox.appendChild(el('legend',null,'Allowed days'));
+        const dayChoices=[];
+        ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach((name,i)=>{
+          const label=el('label',null,name);const input=el('input');input.type='checkbox';input.value=String(i+1);input.checked=(condition?.weekdays||[1,2,3,4,5,6,7]).includes(i+1);label.appendChild(input);weekBox.appendChild(label);dayChoices.push(input);
+        });
+        const conditionHint=el('div','muted','A window crossing midnight belongs to its start day. Unfinished windows use your default snooze. Place rules require a location update within 5 minutes.');
+        const showWhen = () => {
+          const a=when.value==='arrive', combined=['window','presence','arrival_window'].includes(when.value), place=a||when.value==='presence'||when.value==='arrival_window';
+          conversionHint.hidden=editing.kind!=='arrival'||a;
+          lw.style.display=lr.style.display=recurrenceHint.style.display=a?'none':'';
+          ld.hidden=a||repeat.value!=='custom';lhb.style.display=lpl.style.display=place?'':'none';lmd.style.display=a?'':'none';
+          fromLabel.hidden=toLabel.hidden=weekBox.hidden=conditionHint.hidden=!combined;
+        };
         when.addEventListener('change', showWhen);
         // Say the picked time back in words: a picker left on today's date with an after-midnight time is easy to miss.
         const hint = el('div', 'muted');
@@ -243,7 +270,14 @@
           if (!Number.isInteger(interval) || interval < (repeat.value === 'custom' ? 1 : 0) || interval > 3650) { add.disabled = false; addMsg.textContent = 'Choose an interval of 1–3650 days.'; return; }
           let error;
           try {
-            if (editing.kind === 'arrival') {
+            const combined=['window','presence','arrival_window'].includes(when.value);
+            if (combined || condition) {
+              const selectedDays=dayChoices.filter(x=>x.checked).map(x=>Number(x.value));
+              if (combined && (!fromTime.value||!toTime.value||fromTime.value===toTime.value||!selectedDays.length)) throw new Error('Choose different start/end times and at least one day.');
+              if (combined && when.value!=='window' && !pl.value) throw new Error('Choose a place.');
+              const c=combined?{mode:({window:'time',presence:'presence',arrival_window:'arrival'})[when.value],window_start:fromTime.value,window_end:toTime.value,weekdays:selectedDays,place_id:when.value!=='window'&&pl.value.startsWith('p:')?pl.value.slice(2):null,area_id:when.value!=='window'&&pl.value.startsWith('a:')?pl.value.slice(2):null}:null;
+              ({error}=await supabase.rpc('akatsuki_conditioned_save',{p_id:editing.kind==='arrival'?null:editing.id||null,p_arrival_id:editing.kind==='arrival'?editing.id:null,p_title:t.value,p_body:b.value,p_due_at:editing.due_at&&w.value===localInput(new Date(editing.due_at))?editing.due_at:new Date(w.value).toISOString(),p_repeat_days:interval,p_timezone:zone,p_category:folderId,p_app:app,p_request_id:requestId,p_conditions:c}));
+            } else if (editing.kind === 'arrival') {
               ({error} = await supabase.rpc('akatsuki_broadcast_rule_to_time', {p_id:editing.id,p_title:t.value,p_body:b.value,p_due_at:new Date(w.value).toISOString(),p_repeat_days:interval,p_timezone:zone,p_app:app}));
             } else if (editing.id) {
               ({error} = await supabase.rpc('akatsuki_broadcast_manage', {p_id:editing.id,p_action:'edit',p_title:t.value,p_body:b.value,p_due_at:w.value === localInput(new Date(editing.due_at)) ? editing.due_at : new Date(w.value).toISOString(),p_repeat_days:interval}));
@@ -253,7 +287,7 @@
           if (error) { addMsg.textContent = error.message; return; }
           navigate(folderId);
         };
-        box.append(lt, lb, lwhen, conversionHint, lw, lr, ld, recurrenceHint, lhb, lpl, lmd, add, addMsg); showWhen();
+        box.append(lt, lb, lwhen, conversionHint, fromLabel, toLabel, weekBox, conditionHint, lw, lr, ld, recurrenceHint, lhb, lpl, lmd, add, addMsg); showWhen();
         return;
       }
 
@@ -287,6 +321,7 @@
         for (const r of grouped) {
           const it = el('div', 'item'); const tx = el('div', 't'); tx.appendChild(el('b', null, r.title));
           tx.appendChild(el('div', 'muted', (r.snoozes ? `snoozed to ${fmt(r.show_at)} · due ${fmt(r.due_at)}` : fmt(r.due_at)) + (r.push_note ? ' · ' + r.push_note : '')));
+          if (r.conditions) tx.appendChild(el('div','muted',`${({time:'Time window',presence:'At place',arrival:'Arrival'})[r.conditions.mode]} · ${r.conditions.window_start.slice(0,5)}–${r.conditions.window_end.slice(0,5)} · ${r.conditions.weekdays.map(d=>['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][d-1]).join(', ')} · ${r.conditions.timezone}`));
           const actions = el('div', 'actions');
           const edit = el('button', 'small', 'Edit'); edit.onclick = () => navigate(folderId, {...r, kind}); actions.appendChild(edit);
           const itemError = el('div', 'msg'); itemError.setAttribute('role', 'status');
