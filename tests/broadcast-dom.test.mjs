@@ -8,7 +8,7 @@ let rows=[['1','Soap','shopping'],['2','Coffee','shopping'],['3','Room','cleanin
 let fail=false;const calls=[];
 const arrivals=[{id:'arrival1',title:'Wash clothes',body:'Laundry details',place_id:'home',mode:'daily_first',state:'active'}];
 const places=[{id:'home',label:'Home',lat:35,lng:139},{id:'office',label:'Office',lat:36,lng:139}];
-const sb={from(table){const filters=[];const q={select(){return q},eq(k,v){filters.push(r=>r[k]===v);return q},in(k,v){filters.push(r=>v.includes(r[k]));return q},neq(k,v){filters.push(r=>r[k]!==v);return q},lte(){return q},order(){return q},limit(){return q},is(){return q},not(){return q},then(resolve){resolve({data:table==='akatsuki_broadcasts'?rows.filter(r=>filters.every(f=>f(r))):table==='akatsuki_broadcast_rules'?arrivals:table==='akatsuki_places'?places:[]})}};return q},async rpc(name,args){calls.push({name,args});if(fail)return {error:{message:'test failure'}};if(name==='akatsuki_broadcast_manage'){const r=rows.find(r=>r.id===args.p_id);if(args.p_action==='pause')r.state='paused';if(args.p_action==='resume')r.state='scheduled';if(args.p_action==='delete')r.state='cancelled';if(args.p_action==='edit')Object.assign(r,{title:args.p_title,repeat_days:args.p_repeat_days});}else if(name==='akatsuki_broadcast_create'){rows.push({id:'new',title:args.p_title,category:args.p_category,repeat_days:args.p_repeat_days,due_at:args.p_due_at,show_at:args.p_due_at,state:'scheduled'});}else rows=rows.filter(r=>r.id!==args.p_id);return {error:null}}};
+const sb={from(table){const filters=[];const q={select(){return q},eq(k,v){filters.push(r=>r[k]===v);return q},in(k,v){filters.push(r=>v.includes(r[k]));return q},neq(k,v){filters.push(r=>r[k]!==v);return q},lte(){return q},order(){return q},limit(){return q},is(){return q},not(){return q},then(resolve){resolve({data:table==='akatsuki_broadcasts'?rows.filter(r=>filters.every(f=>f(r))):table==='akatsuki_broadcast_rules'?arrivals:table==='akatsuki_places'?places:[]})}};return q},async rpc(name,args){calls.push({name,args});if(fail)return {error:{message:'test failure'}};if(name==='akatsuki_broadcast_shown'||name==='akatsuki_reminder_settings_set')return {error:null};if(name==='akatsuki_broadcast_manage'){const r=rows.find(r=>r.id===args.p_id);if(args.p_action==='pause')r.state='paused';if(args.p_action==='resume')r.state='scheduled';if(args.p_action==='delete')r.state='cancelled';if(args.p_action==='edit')Object.assign(r,{title:args.p_title,repeat_days:args.p_repeat_days});}else if(name==='akatsuki_broadcast_create'){rows.push({id:'new',title:args.p_title,category:args.p_category,repeat_days:args.p_repeat_days,due_at:args.p_due_at,show_at:args.p_due_at,state:'scheduled'});}else rows=rows.filter(r=>r.id!==args.p_id);return {error:null}}};
 const settle=()=>new Promise(resolve=>setTimeout(resolve,50));
 window.eval(fs.readFileSync('js/akatsuki-broadcast.js','utf8'));
 const broadcast=window.AkatsukiBroadcast(sb,'test');broadcast.start(3600000);await settle();
@@ -20,13 +20,13 @@ assert.equal(tasks().length,4);assert(root.textContent.includes('Shopping · 2')
 button(task('Soap'),'Done').click();await settle();assert.equal(tasks().length,3);assert(root.textContent.includes('Shopping · 1'));
 fail=true;button(task('Coffee'),'Done').click();await settle();assert.equal(tasks().length,3);assert(task('Coffee').textContent.includes('test failure'));
 fail=false;task('Room').querySelector('input').value='2090-01-01T09:00';button(task('Room'),'Schedule for…').click();await settle();assert.equal(tasks().length,2);
-button(task('Coffee'),'Skip this occurrence').click();await settle();assert.equal(tasks().length,1);assert(task('Legacy'));
-broadcast.stop();
+button(task('Coffee'),'Skip…').click();assert(button(task('Coffee'),'Do later'));button(task('Coffee'),'Skip this occurrence').click();await settle();assert.equal(tasks().length,1);assert(task('Legacy'));
+assert(calls.some(c=>c.name==='akatsuki_broadcast_shown'));button(task('Legacy'),'Snooze').click();await settle();assert(calls.some(c=>c.name==='akatsuki_broadcast_snooze_default' && c.args.p_expected_show_at));broadcast.stop();
 window.eval(fs.readFileSync('js/akatsuki-broadcast-panel.js','utf8'));
 const panel=window.AkatsukiBroadcastPanel(sb).mount();panel.open();await settle();
 const panelRoot=document.querySelector('[data-akatsuki-broadcast-panel]').shadowRoot;
 const input=label=>[...panelRoot.querySelectorAll('label')].find(l=>l.firstChild.textContent===label)?.querySelector('input,select');
-assert.equal(panelRoot.querySelectorAll('button.folder').length,6);
+assert.equal(panelRoot.querySelectorAll('button.folder').length,6);assert(panelRoot.textContent.includes('Activity history'));input('Default snooze (minutes)').value='90';button(panelRoot,'Save snooze setting').click();await settle();assert(calls.some(c=>c.name==='akatsuki_reminder_settings_set'&&c.args.p_minutes===90));
 assert.equal(input('Title'),undefined);
 panelRoot.querySelector('[data-category=expenses]').click();await settle();
 button(panelRoot,'+ Add rule').click();await settle();

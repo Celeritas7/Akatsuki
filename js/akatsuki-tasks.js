@@ -11,6 +11,12 @@
         if (error) throw error;
         return data;
       },
+      async history(taskId, limit = 100) {
+        const {data, error} = await client.from('akatsuki_task_events').select('*')
+          .eq('task_id', taskId).order('happened_at', {ascending:false}).limit(Math.max(1, Math.min(500, limit)));
+        if (error) throw error;
+        return data;
+      },
       async list() {
         const {data, error} = await client.from('akatsuki_task_status').select('*').eq('source_app', sourceApp);
         if (error) throw error;

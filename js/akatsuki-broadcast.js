@@ -62,7 +62,7 @@
   function AkatsukiBroadcast(supabase, app, opts = {}) {
     if (!supabase || !app) throw new Error('AkatsukiBroadcast(supabase, appId)');
     let rows = [], timer = null, nextTimer = null, host = null, root = null, shownId = null, busy = false, bodyOverflow = null;
-    const seen = new Set();
+    const seen = new Set(), receipts = new Set(), receiptPending = new Set();
     const chan = 'BroadcastChannel' in window ? new BroadcastChannel('akatsuki-broadcast') : null;
     if (chan) chan.onmessage = () => read();
 
@@ -85,9 +85,22 @@
 
     function el(tag, cls, text) { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
 
+    function recordShown(list) {
+      if (document.visibilityState === 'hidden') return;
+      for (const b of list) {
+        const key = b.id + ':' + b.show_at;
+        if (receipts.has(key) || receiptPending.has(key)) continue;
+        receiptPending.add(key);
+        Promise.resolve().then(() => supabase.rpc('akatsuki_broadcast_shown', {p_id:b.id,p_show_at:b.show_at,p_app:app}))
+          .then(r => { if (!r.error) receipts.add(key); })
+          .catch(() => {}).finally(() => receiptPending.delete(key));
+      }
+    }
+
     function render() {
       const list = due();
       if (!list.length) { unmount(); return; }
+      recordShown(list);
       const signature = JSON.stringify(list);
       if (host && shownId === signature) return;           // already showing this one
       mount(); lock(true);
@@ -113,6 +126,10 @@
           const done = el('button', 'done', 'Done');
           done.onclick = () => act(b, () => supabase.rpc('akatsuki_broadcast_done', { p_id: b.id, p_app: app }), err, row);
           row.appendChild(done);
+          const defaultSnooze = el('button', 'snz', 'Snooze');
+          defaultSnooze.title = 'Use your saved default snooze duration';
+          defaultSnooze.onclick = () => act(b, () => supabase.rpc('akatsuki_broadcast_snooze_default', {p_id:b.id,p_expected_show_at:b.show_at,p_app:app}), err, row);
+          row.appendChild(defaultSnooze);
           for (const [m, label] of SNOOZES) {
             const snooze = el('button', 'snz', label);
             snooze.onclick = () => act(b, () => supabase.rpc('akatsuki_broadcast_snooze', { p_id: b.id, p_minutes: m }), err, row);
@@ -126,9 +143,17 @@
             if (!at.value || !Number.isFinite(date.getTime()) || date <= new Date()) { err.textContent = 'Choose a future time.'; return; }
             act(b, () => supabase.rpc('akatsuki_broadcast_reschedule', { p_id: b.id, p_at: date.toISOString() }), err, row);
           };
+          const skipChoice = el('button', null, 'Skip…');
+          const choices = el('div', 'row'); choices.style.display = 'none';
+          choices.appendChild(el('span', 'label', 'Do this later, or skip this occurrence?'));
+          const later = el('button', null, 'Do later');
+          later.onclick = () => act(b, () => supabase.rpc('akatsuki_broadcast_snooze_default', {p_id:b.id,p_expected_show_at:b.show_at,p_app:app}), err, row);
           const skip = el('button', null, 'Skip this occurrence');
           skip.onclick = () => act(b, () => supabase.rpc('akatsuki_broadcast_skip', { p_id: b.id, p_app: app }), err, row);
-          row.append(atLabel, schedule, skip); task.append(row, err); card.appendChild(task);
+          const back = el('button', null, 'Back'); back.onclick = () => { choices.style.display = 'none'; };
+          choices.append(later, skip, back);
+          skipChoice.onclick = () => { choices.style.display = ''; };
+          row.append(atLabel, schedule, skipChoice, choices); task.append(row, err); card.appendChild(task);
         }
       }
       veil.appendChild(card);
