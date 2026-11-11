@@ -49,18 +49,29 @@ panel.close();panel.open();await settle();panelRoot.querySelector('[data-categor
 const arrivalItem=[...panelRoot.querySelectorAll('.item')].find(n=>n.textContent.includes('Wash clothes'));
 button(arrivalItem,'Edit').click();await settle();assert.equal(input('Title').value,'Wash clothes');assert.equal(input('Place').value,'p:home');assert.equal(input('When').value,'arrive');
 input('Title').value='Wash towels';input('Place').value='p:office';
-const arrivalRepeat=[...panelRoot.querySelectorAll('label')].find(l=>l.firstChild.textContent==='Repeat' && l.querySelector('option[value=once]')).querySelector('select');arrivalRepeat.value='once';
+const arrivalRepeat=[...panelRoot.querySelectorAll('label')].find(l=>l.firstChild.textContent==='Arrival frequency' && l.querySelector('option[value=once]')).querySelector('select');arrivalRepeat.value='once';
 fail=true;button(panelRoot,'Save changes').click();await settle();assert(panelRoot.textContent.includes('test failure'));assert(!button(panelRoot,'Save changes').disabled);
 fail=false;button(panelRoot,'Save changes').click();await settle();const edited=calls.filter(c=>c.name==='akatsuki_broadcast_rule_edit').at(-1);assert.equal(edited.args.p_id,'arrival1');assert.equal(edited.args.p_place_id,'office');assert.equal(edited.args.p_title,'Wash towels');assert.equal(edited.args.p_mode,'once');assert.equal(edited.args.p_body,'Laundry details');
 const arrivalAgain=[...panelRoot.querySelectorAll('.item')].find(n=>n.textContent.includes('Wash clothes'));button(arrivalAgain,'Edit').click();await settle();
-assert.equal(input('When').disabled,false);input('When').value='time';input('When').dispatchEvent(new window.Event('change'));assert.notEqual(window.getComputedStyle(input('Due').parentElement).display,'none');assert.equal(window.getComputedStyle(input('Place').parentElement).display,'none');
+assert.equal(input('When').disabled,false);input('When').value='time';input('When').dispatchEvent(new window.Event('change'));assert.notEqual(window.getComputedStyle(input('Date').parentElement.parentElement.parentElement).display,'none');assert.equal(window.getComputedStyle(input('Place').parentElement).display,'none');
 input('Repeat').value='custom';input('Repeat').dispatchEvent(new window.Event('change'));input('Every how many days?').value='14';
 fail=true;button(panelRoot,'Save changes').click();await settle();assert(button(panelRoot,'Save changes'));assert(panelRoot.textContent.includes('test failure'));
 fail=false;button(panelRoot,'Save changes').click();await settle();const converted=calls.filter(c=>c.name==='akatsuki_broadcast_rule_to_time').at(-1);assert.equal(converted.args.p_id,'arrival1');assert.equal(converted.args.p_repeat_days,14);assert(converted.args.p_due_at);
 // Phase 3: create and validate combined place/window rules.
 panel.close();panel.open();await settle();panelRoot.querySelector('[data-category=shopping]').click();await settle();button(panelRoot,'+ Add task').click();await settle();
+// Phase 4: mobile date shortcuts preserve time and summarize the actual schedule.
+assert.equal(input('Date').type,'date');assert.equal(input('Time').type,'time');
+input('Time').value='09:30';input('Time').dispatchEvent(new window.Event('input'));
+button(panelRoot,'Tomorrow').click();const tomorrow=new Date();tomorrow.setDate(tomorrow.getDate()+1);
+const localDay=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+assert.equal(input('Date').value,localDay(tomorrow));assert.equal(input('Time').value,'09:30');
+button(panelRoot,'In 1 hour').click();assert(Math.abs(new Date(input('Date').value+'T'+input('Time').value).getTime()-Date.now()-3600000)<61000);
+input('Date').value='';input('Date').dispatchEvent(new window.Event('input'));input('Title').value='Validation';button(panelRoot,'Add task').click();await settle();assert(panelRoot.textContent.includes('Choose a date and time.'));
+button(panelRoot,'Tomorrow').click();
 input('Title').value='Buy soap near home';input('When').value='presence';input('When').dispatchEvent(new window.Event('change'));
 assert.equal(input('Window starts').parentElement.hidden,false);assert.equal(input('Place').parentElement.style.display,'');
+button(panelRoot,'Weekends').click();assert.equal([...panelRoot.querySelectorAll('fieldset input:checked')].map(d=>d.value).join(','),'6,7');assert(panelRoot.querySelector('.schedule-summary').textContent.includes('Being there before'));
+input('Window starts').value='22:00';input('Window ends').value='02:00';input('Window ends').dispatchEvent(new window.Event('input'));assert(panelRoot.querySelector('.schedule-summary').textContent.includes('following day'));
 input('Window starts').value='18:00';input('Window ends').value='18:00';button(panelRoot,'Add task').click();await settle();assert(panelRoot.textContent.includes('different start/end'));
 input('Window ends').value='22:00';input('Place').value='p:home';
 const days=[...panelRoot.querySelectorAll('fieldset input')];days.forEach(d=>d.checked=d.value==='5');
