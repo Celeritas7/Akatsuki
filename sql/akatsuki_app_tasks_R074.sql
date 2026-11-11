@@ -22,6 +22,8 @@ begin
   -- A request belonging to another task must never be reassigned.
   if exists(select 1 from akatsuki_tasks where id=provisional and source_task_id<>'legacy-broadcast:'||v::text) then raise exception 'Request ID already used'; end if;
   update akatsuki_broadcasts set task_id=t where id=v and user_id=auth.uid();
+  -- A completed one-off task can be explicitly scheduled again with new conditions.
+  delete from akatsuki_task_conditions where task_id=t and user_id=auth.uid();
   update akatsuki_task_conditions set task_id=t where task_id=provisional and user_id=auth.uid();
   delete from akatsuki_tasks where id=provisional and user_id=auth.uid();
  end if;
