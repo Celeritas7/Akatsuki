@@ -30,6 +30,12 @@
     fieldset { display:flex; flex-wrap:wrap; gap:8px; border:1px solid #3a2d33; border-radius:10px; margin:0; padding:10px; }
     fieldset label { flex-direction:row; align-items:center; min-height:44px; padding:0 6px; }
     fieldset input { width:20px; height:20px; accent-color:#c3242b; }
+    .date-row { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+    .date-row label { min-width:0; }
+    .date-row input { min-width:0; width:100%; box-sizing:border-box; }
+    .schedule-summary { padding:14px; border:1px solid #644047; border-radius:12px; background:#21151b; line-height:1.55; font-size:14px; white-space:pre-line; }
+    .save-bar { position:sticky; bottom:0; padding:10px 0; background:#0f0b10; }
+    .save-bar button { width:100%; min-height:48px; }
     textarea { min-height: 70px; resize: vertical; }
     button { font: inherit; font-size: 15px; font-weight: 600; min-height: 44px; padding: 0 14px; border-radius: 10px; border: 1px solid #3a2d33;
       background: #1d161b; color: #efe8e0; cursor: pointer; }
@@ -166,7 +172,7 @@
         const category = {value: folderId};
         box.appendChild(el('div', 'muted', `Folder · ${CATEGORIES[folderId]}`));
         const repeat = el('select');
-        for (const [value, label] of [['0','Once'],['1','Daily'],['7','Weekly'],['custom','Custom interval']]) { const o = el('option', null, label); o.value = value; repeat.appendChild(o); }
+        for (const [value, label] of [['0','Once only'],['1','Every day'],['7','Every week'],['custom','Every N days']]) { const o = el('option', null, label); o.value = value; repeat.appendChild(o); }
         repeat.value = editing.repeat_days ? ([1,7].includes(editing.repeat_days) ? String(editing.repeat_days) : 'custom') : editing.kind === 'rule' ? '1' : '0';
         const lr = el('label', null, 'Repeat'); lr.appendChild(repeat);
         const days = el('input'); days.type = 'number'; days.min = '1'; days.max = '3650'; days.step = '1'; days.value = String(editing.repeat_days || 14);
@@ -183,7 +189,22 @@
         const soon = new Date(Date.now() + 3600e3); soon.setMinutes(Math.ceil(soon.getMinutes() / 5) * 5, 0, 0); w.value = localInput(editing.id ? new Date(editing.due_at || soon) : soon);
         const lt = el('label', null, 'Title'); lt.appendChild(t);
         const lb = el('label', null, 'Message'); lb.appendChild(b);
-        const lw = el('label', null, 'Due'); lw.appendChild(w);
+        // Keep one internal local datetime value for the existing save contract.
+        const lw = el('div');
+        const dueHeading=el('h3',null,'Date and time');lw.appendChild(dueHeading);
+        const dateRow=el('div','date-row');
+        const dateInput=el('input');dateInput.type='date';dateInput.value=w.value.slice(0,10);
+        const timeInput=el('input');timeInput.type='time';timeInput.value=w.value.slice(11,16);
+        const dateLabel=el('label',null,'Date');dateLabel.appendChild(dateInput);
+        const timeLabel=el('label',null,'Time');timeLabel.appendChild(timeInput);dateRow.append(dateLabel,timeLabel);
+        const shortcuts=el('div','actions');
+        const syncDate=()=>{w.value=dateInput.value&&timeInput.value?dateInput.value+'T'+timeInput.value:'';w.dispatchEvent(new Event('input'));};
+        for(const [label,offset] of [['Today',0],['Tomorrow',1],['In 7 days',7]]) {
+          const btn=el('button',null,label);btn.type='button';btn.onclick=()=>{const d=new Date();d.setDate(d.getDate()+offset);dateInput.value=localInput(d).slice(0,10);syncDate();};shortcuts.appendChild(btn);
+        }
+        const inHour=el('button',null,'In 1 hour');inHour.type='button';inHour.onclick=()=>{const d=localInput(new Date(Date.now()+3600e3));dateInput.value=d.slice(0,10);timeInput.value=d.slice(11,16);syncDate();};shortcuts.appendChild(inHour);
+        dateInput.addEventListener('input',syncDate);timeInput.addEventListener('input',syncDate);
+        lw.append(shortcuts,dateRow,el('div','muted',`Date and time use this device's timezone: ${Intl.DateTimeFormat().resolvedOptions().timeZone}.`));
         // R062: when = a time, or arrival at a saved place
         const when = el('select'); [['time', 'At a time'], ['arrive', 'When I arrive at a place'], ['window', 'During a time window'], ['presence', 'At a place during a time window'], ['arrival_window', 'Arrive during a time window']].forEach(([v, l]) => { const o = el('option', null, l); o.value = v; when.appendChild(o); });
         if (folderId !== 'general' || (editing.id && editing.kind !== 'arrival')) when.querySelector('option[value=arrive]').remove();
@@ -215,7 +236,7 @@
         if (condition && condition.mode !== 'time') pl.value = condition.area_id ? 'a:' + condition.area_id : 'p:' + condition.place_id;
         const lhb = el('label', null, 'Hub'); lhb.appendChild(hb);
         const lpl = el('label', null, 'Place'); lpl.appendChild(pl);
-        const lmd = el('label', null, 'Repeat'); lmd.appendChild(md);
+        const lmd = el('label', null, 'Arrival frequency'); lmd.appendChild(md);
         const fromTime=el('input');fromTime.type='time';fromTime.value=condition?.window_start?.slice(0,5)||'18:00';
         const toTime=el('input');toTime.type='time';toTime.value=condition?.window_end?.slice(0,5)||'22:00';
         const fromLabel=el('label',null,'Window starts');fromLabel.appendChild(fromTime);
@@ -225,13 +246,19 @@
         ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach((name,i)=>{
           const label=el('label',null,name);const input=el('input');input.type='checkbox';input.value=String(i+1);input.checked=(condition?.weekdays||[1,2,3,4,5,6,7]).includes(i+1);label.appendChild(input);weekBox.appendChild(label);dayChoices.push(input);
         });
+        const dayPresets=el('div','actions');
+        for(const [label,values] of [['Every day',[1,2,3,4,5,6,7]],['Weekdays',[1,2,3,4,5]],['Weekends',[6,7]]]) {
+          const btn=el('button',null,label);btn.type='button';btn.onclick=()=>{dayChoices.forEach(d=>d.checked=values.includes(Number(d.value)));updateSummary();};dayPresets.appendChild(btn);
+        }
         const conditionHint=el('div','muted','A window crossing midnight belongs to its start day. Unfinished windows use your default snooze. Place rules require a location update within 5 minutes.');
         const showWhen = () => {
           const a=when.value==='arrive', combined=['window','presence','arrival_window'].includes(when.value), place=a||when.value==='presence'||when.value==='arrival_window';
           conversionHint.hidden=editing.kind!=='arrival'||a;
           lw.style.display=lr.style.display=recurrenceHint.style.display=a?'none':'';
           ld.hidden=a||repeat.value!=='custom';lhb.style.display=lpl.style.display=place?'':'none';lmd.style.display=a?'':'none';
-          fromLabel.hidden=toLabel.hidden=weekBox.hidden=conditionHint.hidden=!combined;
+          fromLabel.hidden=toLabel.hidden=weekBox.hidden=conditionHint.hidden=dayPresets.hidden=!combined;
+          dueHeading.textContent=combined?'Start checking from':'Date and time';
+          recurrenceHint.textContent=`Repeats use ${zone}. After Done or Skip, the next future scheduled date is used. ${combined?'Allowed days and hours limit when it appears; unfinished windows use your default snooze.':'Unfinished tasks remain pending until snoozed, completed or skipped.'}`;
         };
         when.addEventListener('change', showWhen);
         // Say the picked time back in words: a picker left on today's date with an after-midnight time is easy to miss.
@@ -244,6 +271,27 @@
           hint.style.color = ms < -60e3 ? '#ffb4b4' : '';
         };
         w.addEventListener('input', sayWhen); sayWhen(); lw.appendChild(hint);
+        const summary=el('div','schedule-summary');summary.setAttribute('role','status');summary.setAttribute('aria-live','polite');
+        const updateSummary=()=>{
+          const place=pl.selectedOptions[0]?.textContent||'choose a place';
+          const combined=['window','presence','arrival_window'].includes(when.value);
+          let message;
+          if(when.value==='arrive') message=`When you arrive at ${place}: ${md.value==='once'?'next arrival only':'first arrival of each day'}.`;
+          else {
+            const valid=w.value&&!Number.isNaN(new Date(w.value).getTime());
+            const start=valid?fmt(new Date(w.value).toISOString()):'choose a date and time';
+            const interval=Number(repeat.value==='custom'?days.value:repeat.value);
+            const repeats=repeat.value==='custom'&&(!Number.isInteger(interval)||interval<1||interval>3650)?'Choose an interval of 1–3650 days.':interval===0?'One occurrence.':`After Done or Skip, repeat on the next future date in the schedule (every ${interval===1?'day':interval===7?'week':interval+' days'}).`;
+            if(combined){
+              const names=dayChoices.filter(d=>d.checked).map(d=>['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][Number(d.value)-1]).join(', ')||'choose allowed days';
+              const where=when.value==='presence'?`Only while you are at ${place}. Being there before the window opens counts.`:when.value==='arrival_window'?`Only when you arrive at ${place} during the window.`:'No place required.';
+              message=`Start checking from ${start}.\n${names}, ${fromTime.value||'…'}–${toTime.value||'…'} (${zone})${toTime.value<fromTime.value?' — ends the following day':''}. ${where}\n${repeats} Unfinished windows are logged and snoozed using your setting.`;
+            }else message=`Show at ${start}. ${repeats}`;
+          }
+          summary.textContent=message;
+        };
+        for(const control of [when,pl,hb,md,repeat,days,fromTime,toTime,...dayChoices]) {control.addEventListener('change',updateSummary);control.addEventListener('input',updateSummary);}
+        w.addEventListener('input',updateSummary);
         const addMsg = el('div', 'msg'); const add = el('button', 'primary', editing.id ? 'Save changes' : editing.kind === 'rule' ? 'Add rule' : 'Add task');
         add.onclick = async () => {
           addMsg.className = 'msg'; addMsg.textContent = '';
@@ -263,7 +311,7 @@
             if (r.error) { addMsg.textContent = r.error.message; return; }
             navigate(folderId); return;
           }
-          if (!w.value) { addMsg.textContent = 'Pick a due time.'; return; }
+          if (!w.value || Number.isNaN(new Date(w.value).getTime())) { addMsg.textContent = 'Choose a date and time.'; return; }
           if ((!editing.id || editing.kind === 'arrival') && new Date(w.value).getTime() < Date.now() - 60e3) { addMsg.textContent = 'That time has already passed — check the date.'; return; }
           add.disabled = true;
           const interval = Number(repeat.value === 'custom' ? days.value : repeat.value);
@@ -287,7 +335,8 @@
           if (error) { addMsg.textContent = error.message; return; }
           navigate(folderId);
         };
-        box.append(lt, lb, lwhen, conversionHint, fromLabel, toLabel, weekBox, conditionHint, lw, lr, ld, recurrenceHint, lhb, lpl, lmd, add, addMsg); showWhen();
+        const saveBar=el('div','save-bar');saveBar.append(add,addMsg);
+        box.append(lt,lb,lwhen,conversionHint,lhb,lpl,lmd,lw,fromLabel,toLabel,dayPresets,weekBox,conditionHint,lr,ld,recurrenceHint,summary,saveBar);showWhen();updateSummary();
         return;
       }
 
