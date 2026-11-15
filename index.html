@@ -33,6 +33,8 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') addEventListe
   <script src="js/akatsuki-location.js"></script>
   <script src="js/akatsuki-broadcast.js"></script>
   <script src="js/akatsuki-broadcast-panel.js"></script>
+  <script src="js/akatsuki-contract-registry.js"></script>
+  <script src="js/akatsuki-contracts-view.js"></script>
   <title>Akatsuki</title>
   <link rel="icon" type="image/png" href="assets/favicon.png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
@@ -595,6 +597,52 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') addEventListe
 
     <sc-if value="{{ isHub }}" hint-placeholder-val="{{ false }}">
       <div style="display:flex; flex-direction:column; gap:22px">
+        <section aria-label="Contracts registry" style="display:flex; flex-direction:column; gap:12px; padding:18px; border:1px solid rgba(249,115,22,.35); border-radius:var(--radius-xl); background:var(--bg-card)">
+          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px">
+            <div style="display:flex; flex-direction:column; gap:4px">
+              <strong style="color:#fb923c; font-size:1rem">📜 Contracts registry</strong>
+              <span style="font-size:.8rem; color:var(--text-secondary)">A1C · Registered apps, services and published versions · read-only</span>
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap">
+              <button type="button" onClick="{{ toggleContracts }}" style="min-height:44px; padding:8px 14px; border-radius:10px; border:1px solid var(--border-color); background:var(--bg-secondary); color:var(--text-primary); cursor:pointer">{{ contractsToggleLabel }}</button>
+              <sc-if value="{{ contractsExpanded }}"><button type="button" onClick="{{ reloadContracts }}" style="min-height:44px; padding:8px 14px; border-radius:10px; border:1px solid var(--border-color); background:var(--bg-secondary); color:var(--text-primary); cursor:pointer">Refresh</button></sc-if>
+            </div>
+          </div>
+          <sc-if value="{{ contractsExpanded }}">
+            <div role="status" aria-live="polite" style="font-size:.86rem; color:{{ contractsStatusColor }}">{{ contractsStatusText }}</div>
+            <sc-if value="{{ contractsReady }}">
+              <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr)); gap:14px">
+                <div style="display:flex; flex-direction:column; gap:8px">
+                  <strong>Apps · {{ contractsAppCount }}</strong>
+                  <sc-if value="{{ contractsNoApps }}"><span style="color:var(--text-secondary); font-size:.85rem">No apps registered yet.</span></sc-if>
+                  <sc-for list="{{ contractApps }}" as="app">
+                    <div style="padding:12px; border-radius:10px; border:1px solid var(--border-color); background:var(--bg-secondary); display:flex; flex-direction:column; gap:4px">
+                      <strong>{{ app.name }}</strong><span style="font-size:.8rem; color:var(--text-secondary); overflow-wrap:anywhere">{{ app.app_key }} · {{ app.lifecycle }} · {{ app.offlineLabel }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:8px">
+                  <strong>Services · {{ contractsServiceCount }}</strong>
+                  <sc-if value="{{ contractsNoServices }}"><span style="color:var(--text-secondary); font-size:.85rem">No services registered yet.</span></sc-if>
+                  <sc-for list="{{ contractServices }}" as="service">
+                    <button type="button" onClick="{{ service.select }}" style="text-align:left; padding:12px; border-radius:10px; border:1px solid var(--border-color); background:var(--bg-secondary); color:var(--text-primary); cursor:pointer; display:flex; flex-direction:column; gap:4px; min-height:54px">
+                      <strong>{{ service.name }}</strong><span style="font-size:.8rem; color:var(--text-secondary); overflow-wrap:anywhere">{{ service.service_key }} · {{ service.lifecycle }} · View versions</span>
+                    </button>
+                  </sc-for>
+                </div>
+              </div>
+              <sc-if value="{{ contractsServiceSelected }}">
+                <div style="border-top:1px solid var(--border-color); padding-top:12px; display:flex; flex-direction:column; gap:8px">
+                  <strong>Published contracts · {{ selectedContractService }}</strong>
+                  <span role="status" aria-live="polite" style="color:var(--text-secondary); font-size:.85rem">{{ contractVersionsStatus }}</span>
+                  <sc-for list="{{ contractVersions }}" as="version">
+                    <div style="padding:10px 12px; border-radius:10px; background:var(--bg-secondary); border:1px solid var(--border-color)">{{ version.contract_key }} · v{{ version.version }} · {{ version.lifecycle }}</div>
+                  </sc-for>
+                </div>
+              </sc-if>
+            </sc-if>
+          </sc-if>
+        </section>
         <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding:12px 16px; border-radius:var(--radius-xl); background:var(--bg-card); border:1px solid {{ liveBorder }}">
           <span style="display:flex; align-items:center; gap:8px; font-size:.85rem; font-weight:600; color: {{ liveColor }}; white-space:nowrap"><span style="width:8px; height:8px; border-radius:50%; background: {{ liveColor }}; box-shadow: 0 0 10px {{ liveColor }}"></span>{{ liveLabel }}</span>
           <span style="font-size:.85rem; color:var(--text-secondary); flex:1 1 200px; min-width:0; text-wrap:pretty">{{ liveNote }}</span>
@@ -969,7 +1017,7 @@ class Component extends DCLogic {
       const oauthErr = q.get('error_description');
       if (oauthErr) history.replaceState(null, '', location.pathname);
       this.setState({ session: session || null, authChecked: true, authMsg: oauthErr ? 'Sign-in failed: ' + oauthErr.replace(/\+/g, ' ') : '' });
-      this.sb.auth.onAuthStateChange((_e, s) => { this.setState({ session: s || null }); if (s) this.loadLive(); else { this.locStop(false); this.setState({ live: null }); } });
+      this.sb.auth.onAuthStateChange((_e, s) => { this.setState({ session: s || null }); if (s) { this.loadLive(); if (this.state.contractsExpanded) this.loadContracts(); } else { this.locStop(false); this._contractsRequest++; this.setState({ live: null, contractsStatus: 'signed-out', contractApps: [], contractServices: [], contractVersions: [], contractServiceKey: '' }); } });
       if (session) await this.loadLive();
     } catch (e) { this.setState({ authChecked: true, authMsg: 'Could not reach Supabase: ' + e.message }); }
   }
@@ -1019,6 +1067,30 @@ class Component extends DCLogic {
       this.loadVisits();
       if (localStorage.getItem('akatsuki_loc_on') !== '0') this.locStart();
     } catch (e) { this.setState({ liveBusy: false, authMsg: 'Load failed: ' + e.message }); }
+  }
+  _contractsRequest = 0;
+  async loadContracts() {
+    const request = ++this._contractsRequest;
+    if (!this.sb || !this.state.session || !window.AkatsukiContractRegistry || !window.AkatsukiContractsView) {
+      this.setState({ contractsStatus: 'signed-out', contractApps: [], contractServices: [], contractVersions: [], contractServiceKey: '' }); return;
+    }
+    this.setState({ contractsStatus: 'loading', contractApps: [], contractServices: [], contractVersions: [], contractServiceKey: '' });
+    const result = await window.AkatsukiContractsView.adapter(window.AkatsukiContractRegistry).load(this.sb);
+    if (request !== this._contractsRequest) return;
+    this.setState({ contractsStatus: result.status, contractsMessage: result.message || '', contractApps: result.apps, contractServices: result.services });
+  }
+  async selectContractService(serviceKey) {
+    const request = ++this._contractsRequest;
+    this.setState({ contractServiceKey: serviceKey, contractVersionsStatus: 'loading', contractVersions: [] });
+    const result = await window.AkatsukiContractsView.adapter(window.AkatsukiContractRegistry).contracts(this.sb, serviceKey);
+    if (request !== this._contractsRequest) return;
+    this.setState({ contractVersionsStatus: result.status, contractVersionsMessage: result.message || '', contractVersions: result.contracts });
+  }
+  toggleContracts() {
+    const next = !this.state.contractsExpanded;
+    this.setState({ contractsExpanded: next });
+    if (next) this.loadContracts();
+    else this._contractsRequest++;
   }
   // ---- Location (R033): the hub records visits itself while open; on by default, off is remembered per install ----
   locH = null;
@@ -1096,6 +1168,7 @@ class Component extends DCLogic {
 
   state = {
     view: 'channel', viewAs: null, compose: false, flare: false, board: 'weekday',
+    contractsExpanded: false, contractsStatus: 'idle', contractsMessage: '', contractApps: [], contractServices: [], contractServiceKey: '', contractVersions: [], contractVersionsStatus: 'idle', contractVersionsMessage: '',
     form: { day: 'weekday', time: '21:15', dur: 30, lock: 'soft', note: '' },
     rules: { 'Weekend shields-up': true, 'Credit emergency': true, 'Streak protection': true, 'Mood override': false },
     challengers: [
@@ -1502,6 +1575,24 @@ class Component extends DCLogic {
     return {
       ...locVals, ...nameVals,
       isHub, goHub: () => this.setState({ view: 'hub' }),
+      contractsExpanded: !!S.contractsExpanded, toggleContracts: () => this.toggleContracts(),
+      contractsToggleLabel: S.contractsExpanded ? 'Hide contracts' : 'View contracts', reloadContracts: () => this.loadContracts(),
+      contractsReady: S.contractsStatus === 'ready',
+      contractsStatusText: S.contractsStatus === 'ready' ? 'Read-only registry records. These are separate from the legacy Hub cards.'
+        : S.contractsStatus === 'loading' ? 'Loading registered apps and services…'
+        : S.contractsStatus === 'unavailable' ? S.contractsMessage
+        : S.contractsStatus === 'error' ? S.contractsMessage
+        : 'Sign in to read your registry. No example records are substituted.',
+      contractsStatusColor: S.contractsStatus === 'error' ? '#fca5a5' : S.contractsStatus === 'unavailable' ? '#fbbf24' : 'var(--text-secondary)',
+      contractApps: (S.contractApps || []).map(a => ({ ...a, offlineLabel: a.offline_capable ? 'Offline capable' : 'Online / unspecified' })),
+      contractServices: (S.contractServices || []).map(s => ({ ...s, select: () => this.selectContractService(s.service_key) })),
+      contractsAppCount: (S.contractApps || []).length, contractsServiceCount: (S.contractServices || []).length,
+      contractsNoApps: !(S.contractApps || []).length, contractsNoServices: !(S.contractServices || []).length,
+      contractsServiceSelected: !!S.contractServiceKey, selectedContractService: S.contractServiceKey || '',
+      contractVersions: S.contractVersions || [],
+      contractVersionsStatus: S.contractVersionsStatus === 'loading' ? 'Loading published versions…'
+        : S.contractVersionsStatus === 'ready' ? (S.contractVersions || []).length ? 'Published / deprecated versions only.' : 'No published versions for this service.'
+        : S.contractVersionsMessage || 'Versions unavailable.',
       composeClaim: S.compose && !isHub, composeHub: S.compose && isHub,
       hubApps, hubLinks, hubVocab, hubSources, hubCreds, regIsApi: reg.role === 'api', regBlocked,
       reg, setReg, submitReg, regVerdictText, regVerdictColor: !reg.id || !reg.name ? 'var(--text-muted)' : regJ.color,
