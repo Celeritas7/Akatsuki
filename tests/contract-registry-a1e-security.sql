@@ -116,7 +116,7 @@ begin
   end if;
 
   result := public.akatsuki_contract_register('app',
-    '{"app_key":"a1e-fresh","name":"Owner B's independent key"}');
+    '{"app_key":"a1e-fresh","name":"Owner B independent key"}');
   if result->>'status' <> 'created' then
     raise exception 'Tenant-local app keys incorrectly collide across owners';
   end if;
