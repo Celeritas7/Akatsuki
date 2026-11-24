@@ -21,7 +21,7 @@ begin
       and p.prosecdef
       and pg_get_functiondef(p.oid) ilike '%auth.uid()%'
       and exists (
-        select 1 from unnest(p.proconfig) as setting
+        select 1 from unnest(p.proconfig) as configs(setting)
         where setting like 'search_path=%'
           and setting not ilike '%public%'
           and setting not ilike '%pg_temp%'
