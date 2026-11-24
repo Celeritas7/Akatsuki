@@ -6,6 +6,7 @@ from contextlib import redirect_stdout, redirect_stderr
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 from zipfile import ZIP_DEFLATED, ZipFile
 import hashlib
 
@@ -48,7 +49,7 @@ def write_fixture(root, object_digest_valid=True, same_inventory=True):
 class BackupVerifierTests(unittest.TestCase):
     def run_check(self, root):
         out = io.StringIO()
-        with redirect_stdout(out), redirect_stderr(out):
+        with redirect_stdout(out), redirect_stderr(out), patch.object(module.shutil, "which", return_value=None):
             status = module.main(["--root", str(root)])
         return status, out.getvalue()
 
