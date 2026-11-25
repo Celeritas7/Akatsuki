@@ -10,6 +10,12 @@ assert.match(sql, /inet_server_addr\(\)/);
 assert.match(sql, /SET LOCAL ROLE authenticated;/);
 assert.match(sql, /SET LOCAL ROLE anon;/);
 assert.match(sql, /has_function_privilege\('anon'/);
+// PostgreSQL stores SET search_path = '' as search_path="" in proconfig.
+// Avoid brittle equality against the raw proconfig array element.
+assert.match(sql, /pg_options_to_table\(p\.proconfig\)/);
+assert.match(sql, /cfg\.option_name='search_path'/);
+assert.match(sql, /cfg\.option_value IN \('', '""'\)/);
+assert.doesNotMatch(sql, /'search_path='=ANY\(p\.proconfig\)/);
 assert.match(sql, /pg_policies/);
 assert.match(sql, /Cross-owner app visibility leaked/);
 assert.match(sql, /Anonymous registration unexpectedly allowed/);
