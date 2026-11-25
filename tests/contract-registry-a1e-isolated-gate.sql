@@ -54,9 +54,19 @@ BEGIN
      OR NOT has_function_privilege('authenticated', fn, 'EXECUTE') THEN
     RAISE EXCEPTION 'Registration function EXECUTE grants unsafe';
   END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid=fn
-                 AND p.prosecdef AND 'search_path='=ANY(p.proconfig)) THEN
-    RAISE EXCEPTION 'Registration function needs SECURITY DEFINER with empty search path';
+  -- PostgreSQL 17 records SET search_path = '' as search_path="" in
+  -- pg_proc.proconfig. Parse the option rather than comparing its raw text.
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_proc p
+    WHERE p.oid=fn AND p.prosecdef
+      AND EXISTS (
+        SELECT 1 FROM pg_options_to_table(p.proconfig) AS cfg
+        WHERE cfg.option_name='search_path'
+          AND cfg.option_value IN ('', '""')
+      )
+  ) THEN
+    RAISE EXCEPTION 'Registration function needs SECURITY DEFINER with empty search path (proconfig=%)',
+      (SELECT p.proconfig FROM pg_proc p WHERE p.oid=fn);
   END IF;
 END;
 $grants$;
